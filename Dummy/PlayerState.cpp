@@ -86,7 +86,8 @@ PlayerState* GameLoginState::RecvPacket(Player* player, CRecvBuffer& buffer)
             psh::GetGame_ResLevelEnter(buffer,accountNo, myId,server);
             
             player->LevelChangeComp();
-
+            player->containGroup = server;
+            player->_me = myId;
             switch (server)
             {
             case psh::ServerType::Village:
@@ -118,23 +119,34 @@ PlayerState* GameState::Update(Player* player, int time)
     //이동중이면 도착 전 까진 이동만 함. 
     if(player->isMove)
     {
-        player->toDestinationTime -=time;
-
-        if(player->toDestinationTime<=0)
+        player->moveTime +=time;
+        
+        if(player->toDestinationTime<=player->moveTime)
         {
             player->Stop();
         }
     }
     //플레이어 멈춘 상태. 타겟이 있다면 공격.
-    // else if (player->_target != -1)
-    // {
-    //     player->Attack(psh::RandomUtil::Rand(0,2));
-    // }
+     else if (player->_target != -1)
+     {
+        if (player->attackCooldown > 0) 
+        {
+            player->attackCooldown -= time;
+            return this;
+        }
+
+        player->Attack(psh::RandomUtil::Rand(0,2));
+        player->attackCooldown += 1000;
+     }
     //멈췄는데 타겟이 없다면 이동 시도
     else if(needAct(permil.move))
     {
-        player->Move({float(psh::RandomUtil::Rand(permil.moveOffset,permil.moveRange))
-            ,float(psh::RandomUtil::Rand(permil.moveOffset,permil.moveRange))});
+        int dx = psh::RandomUtil::Rand(-1* permil.moveOffset, permil.moveOffset);
+        int dy = psh::RandomUtil::Rand(-1* permil.moveOffset, permil.moveOffset);
+        auto dest = player->_location + psh::FVector(dx, dy);
+        dest = Clamp(dest, 0, permil.moveRange);
+
+        player->Move(dest);
     }
     return this;
 }
@@ -156,6 +168,8 @@ PlayerState* GameState::RecvPacket(Player* player, CRecvBuffer& buffer)
 
 PlayerState* GameState::HandlePacket(psh::ePacketType type, Player* player, CRecvBuffer& buffer)
 {
+    if (player->_accountNo > 10000000)
+        __debugbreak();
     switch (type)
     {
     case psh::eGame_ResLevelEnter:
@@ -173,14 +187,26 @@ PlayerState* GameState::HandlePacket(psh::ePacketType type, Player* player, CRec
             psh::FVector loc;
             psh::FVector dir;
             psh::FVector dst;
-            psh::GetGame_ResCreateActor(buffer,  objectId,group,charType, loc, dir, dst,isMove,isSpawn);
-            if (player->_me == -1)
+            psh::Nickname nick;
+            psh::GetGame_ResCreateActor(buffer, objectId,group,charType, loc, dir, dst,isMove,isSpawn,nick);
+
+            if (objectId == player->_me)
             {
-                player->_me = objectId;
+                player->_location = loc;
             }
-            if (player->_target == -1)
+
+            else if (player->_target == -1 
+                && group == psh::eCharacterGroup::Monster)
             {
                 player->_target = objectId;
+                if (isMove)
+                {
+                    player->Move(dst);
+                }
+                else
+                {
+                    player->Move(loc);
+                }
             }
         }
         break;
@@ -197,12 +223,28 @@ PlayerState* GameState::HandlePacket(psh::ePacketType type, Player* player, CRec
             }
         }
         break;
+    case psh::eGame_ResGetCoin:
+        {
+        psh::ObjectID objectId;
+        uint8 value;
+        psh::GetGame_ResGetCoin(buffer, objectId, value);
+        ASSERT_CRASH(player->_me == objectId, L"Invalid Recv");
+        player->coin += value;
+        }
+        break;
     case psh::eGame_ResMoveStop:
         {
             ASSERT_CRASH(player->_me != -1, L"NotCreated But RecvPacket");
             psh::FVector loc;
             psh::ObjectID id;
             psh::GetGame_ResMoveStop(buffer, id, loc);
+            if (id == player->_me)
+            {
+                
+                player->_location = loc;
+                player->Stop();
+            }
+
             if(id == player->_target)
             {
                 player->Move(loc);
@@ -219,6 +261,7 @@ PlayerState* GameState::HandlePacket(psh::ePacketType type, Player* player, CRec
             {
                 player->CheckPacket(type);
             }
+            int a = 10;
         }
         break;
     case psh::eGame_ResAttack:
@@ -256,6 +299,7 @@ PlayerState* GameState::HandlePacket(psh::ePacketType type, Player* player, CRec
         ASSERT_CRASH(false, "Invalid Packet Type");
         break;
     }
+
     return this;
 }
 
@@ -270,6 +314,8 @@ PlayerState* LevelChangeState::HandlePacket(psh::ePacketType type, Player* playe
         player->CheckPacket(type);
         ASSERT_CRASH(accountNo == player->_accountNo, "InvalidAccountNO");
         ASSERT_CRASH(server == player->containGroup,L"Invaid Group move");
+        player->_me = myID;
+        player->_target = -1;
         player->LevelChangeComp();
         player->containGroup = server;
         switch (server)
@@ -343,176 +389,66 @@ PlayerState* PveState::Update(Player* player, int time)
     return GameState::Update(player, time);
 }
 
-PlayerState* PveState::RecvPacket(Player* player, CRecvBuffer& buffer)
+PlayerState* PveState::HandlePacket(psh::ePacketType type, Player* player, CRecvBuffer& buffer)
 {
-    while (buffer.CanPopSize() != 0)
+    switch (type)
     {
-        psh::ePacketType type;
-        buffer >> type;
+    case psh::eGame_ResAttack:
+    {
+        ASSERT_CRASH(player->_me != -1, L"NotCreated But RecvPacket");
+        psh::ObjectID objectId;
+        char attackType;
+        psh::GetGame_ResAttack(buffer, objectId, attackType);
+        if (objectId == player->_me)
+        {
+            player->CheckPacket(type);
+        }
+    }
+    break;
+    case psh::eGame_ResHit:
+    {
+        ASSERT_CRASH(player->_me != -1, L"NotCreated But RecvPacket");
+        psh::ObjectID objectId;
+        psh::ObjectID attacker;
+        int hp;
+        psh::GetGame_ResHit(buffer, objectId, attacker, hp);
 
-        switch (type)
-        {
-        case psh::eGame_ResAttack:
-        {
-            ASSERT_CRASH(player->_me != -1, L"NotCreated But RecvPacket");
-            psh::ObjectID objectId;
-            char attackType;
-            psh::GetGame_ResAttack(buffer, objectId, attackType);
-            if(objectId == player->_me)
-            {
-                player->CheckPacket(type);
-            }
-        }
-        break;
-        case psh::eGame_ResHit:
-        {
-            ASSERT_CRASH(player->_me != -1, L"NotCreated But RecvPacket");
-            psh::ObjectID objectId;
-            psh::ObjectID attacker;
-            int hp;
-            psh::GetGame_ResHit(buffer, objectId,attacker, hp);
+    }
+    break;
+    case psh::eGame_ResMove:
+    {
+        ASSERT_CRASH(player->_me != -1, L"NotCreated But RecvPacket");
+        psh::FVector loc;
+        psh::ObjectID id;
+        psh::GetGame_ResMove(buffer, id, loc);
 
-        }
-        break;
-        case psh::eGame_ResMove:
+        if (id == player->_me)
         {
-            ASSERT_CRASH(player->_me != -1, L"NotCreated But RecvPacket");
-            psh::FVector loc;
-            psh::ObjectID id;
-            psh::GetGame_ResMove(buffer, id, loc);
-            if(id == player->_me)
-            {
-                player->CheckPacket(psh::eGame_ReqMove);
-            }
+            player->CheckPacket(type);
         }
-        break;
-        case psh::eGame_ResCreateActor:
+    }
+    break;
+    case psh::eGame_ResDestroyActor:
+    {
+        ASSERT_CRASH(player->_me != -1, L"NotCreated But RecvPacket");
+        psh::ObjectID objectId;
+        bool isDead;
+        psh::GetGame_ResDestroyActor(buffer, objectId, isDead);
+        if (player->_me == objectId)
         {
-            psh::ObjectID objectId;
-            bool isSpawn;
-            bool isMove;
-            psh::eCharacterGroup group;
-            char type;
-            psh::FVector loc;
-            psh::FVector dir;
-            psh::FVector dst;
-            psh::GetGame_ResCreateActor(buffer,  objectId,group,type, loc, dir, dst,isMove,isSpawn);
-            if (player->_me == -1)
-            {
-                player->_me = objectId;
-            }
-            else if (player->_target == -1)
-            {
-                player->_target = objectId;
-            }
+            player->Disconnect();
+            return DisconnectWaitState::Get();
         }
-        break;
-        case psh::eGame_ResDestroyActor:
+        if (player->_target == objectId)
         {
-            ASSERT_CRASH(player->_me != -1, L"NotCreated But RecvPacket");
-            psh::ObjectID objectId;
-            bool isDead;
-            psh::GetGame_ResDestroyActor(buffer,  objectId, isDead);
-            if (player->_me == objectId)
-            {
-                player->Disconnect();
-                return DisconnectWaitState::Get();
-            }
-            if(player->_target == objectId)
-            {
-                player->_target = -1;
-            }
+            player->_target = -1;
         }
-        break;
-        default:
-            return GameState::HandlePacket(type, player, buffer);
-        }
+    }
+    break;
+    default:
+        return GameState::HandlePacket(type, player, buffer);
     }
     return this;
-}
-
-PlayerState* PvpState::RecvPacket(Player* player, CRecvBuffer& buffer)
-{
-    while (buffer.CanPopSize() != 0)
-    {
-        psh::ePacketType type;
-        buffer >> type;
-
-        switch (type)
-        {
-        case psh::eGame_ResAttack:
-        {
-            ASSERT_CRASH(player->_me != -1, L"NotCreated But RecvPacket");
-            psh::ObjectID objectId;
-            char type;
-            psh::GetGame_ResAttack(buffer, objectId,type);
-            if(objectId == player->_me)
-            {
-                player->CheckPacket(psh::eGame_ReqAttack);
-            }
-        }
-        break;
-        case psh::eGame_ResHit:
-        {
-            ASSERT_CRASH(player->_me != -1, L"NotCreated But RecvPacket");
-            psh::ObjectID objectId;
-            psh::ObjectID attacker;
-            int hp;
-            psh::GetGame_ResHit(buffer, objectId,attacker, hp);
-
-        }
-        break;
-        case psh::eGame_ResMove:
-        {
-            ASSERT_CRASH(player->_me != -1, L"NotCreated But RecvPacket");
-            psh::FVector loc;
-            psh::ObjectID id;
-            psh::GetGame_ResMove(buffer, id, loc);
-            if(id == player->_me)
-            {
-                player->CheckPacket(psh::eGame_ReqMove);
-            }
-        }
-        break;
-        case psh::eGame_ResCreateActor:
-        {
-            psh::ObjectID objectId;
-            bool isSpawn;
-            bool isMove;
-            psh::eCharacterGroup group;
-            char type;
-            psh::FVector loc;
-            psh::FVector dir;
-            psh::FVector dst;
-            psh::GetGame_ResCreateActor(buffer,  objectId,group,type, loc, dir, dst,isMove,isSpawn);
-            if (player->_me == -1)
-            {
-                player->_me = objectId;
-            }
-            else if (player->_target == -1)
-            {
-                player->_target = objectId;
-            }
-        }
-        break;
-        case psh::eGame_ResDestroyActor:
-        {
-            ASSERT_CRASH(player->_me != -1, L"NotCreated But RecvPacket");
-            psh::ObjectID objectId;
-            bool isDead;
-            psh::GetGame_ResDestroyActor(buffer,  objectId, isDead);
-            if (player->_me == objectId)
-            {
-                player->Disconnect();
-                return DisconnectWaitState::Get();
-            }
-        }
-        break;
-        default:
-            ASSERT_CRASH(false, "Invalid Packet Type");
-            break;
-        }
-    }
 }
 
 
@@ -524,4 +460,86 @@ PlayerState* DisconnectWaitState::Update(Player* player, int time)
 PlayerState* DisconnectWaitState::RecvPacket(Player* player, CRecvBuffer& buffer)
 {
     return PlayerState::RecvPacket(player, buffer);
+}
+
+PlayerState* PvpState::HandlePacket(psh::ePacketType type, Player* player, CRecvBuffer& buffer)
+{
+
+    switch (type)
+    {
+    case psh::eGame_ResAttack:
+    {
+        ASSERT_CRASH(player->_me != -1, L"NotCreated But RecvPacket");
+        psh::ObjectID objectId;
+        char type;
+        psh::GetGame_ResAttack(buffer, objectId, type);
+        if (objectId == player->_me)
+        {
+            player->CheckPacket(psh::eGame_ReqAttack);
+        }
+    }
+    break;
+    case psh::eGame_ResHit:
+    {
+        ASSERT_CRASH(player->_me != -1, L"NotCreated But RecvPacket");
+        psh::ObjectID objectId;
+        psh::ObjectID attacker;
+        int hp;
+        psh::GetGame_ResHit(buffer, objectId, attacker, hp);
+
+    }
+    break;
+    case psh::eGame_ResMove:
+    {
+        ASSERT_CRASH(player->_me != -1, L"NotCreated But RecvPacket");
+        psh::FVector loc;
+        psh::ObjectID id;
+        psh::GetGame_ResMove(buffer, id, loc);
+        if (id == player->_me)
+        {
+            player->CheckPacket(type);
+        }
+    }
+    break;
+    case psh::eGame_ResCreateActor:
+    {
+        psh::ObjectID objectId;
+        bool isSpawn;
+        bool isMove;
+        psh::eCharacterGroup group;
+        char type;
+        psh::FVector loc;
+        psh::FVector dir;
+        psh::FVector dst;
+        psh::Nickname nick;
+        psh::GetGame_ResCreateActor(buffer, objectId, group, type, loc, dir, dst, isMove, isSpawn,nick);
+        if (player->_me == -1)
+        {
+            player->_me = objectId;
+        }
+        else if (player->_target == -1
+            && player->_me != objectId
+            && group != psh::eCharacterGroup::Item)
+        {
+            player->_target = objectId;
+        }
+    }
+    break;
+    case psh::eGame_ResDestroyActor:
+    {
+        ASSERT_CRASH(player->_me != -1, L"NotCreated But RecvPacket");
+        psh::ObjectID objectId;
+        bool isDead;
+        psh::GetGame_ResDestroyActor(buffer, objectId, isDead);
+        if (player->_me == objectId)
+        {
+            player->Disconnect();
+            return DisconnectWaitState::Get();
+        }
+    }
+    break;
+    default:
+        ASSERT_CRASH(false, "Invalid Packet Type");
+        break;
+    }
 }

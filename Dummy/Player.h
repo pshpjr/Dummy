@@ -15,7 +15,7 @@
 class IOCP;
 class Player
 {
-    static constexpr int speedPerMS = 400/1000;
+    static constexpr float speedPerMS = 400 / 1000.0f;
     friend class PlayerState;
     friend class LoginLoginState;
     friend class GameState;
@@ -42,10 +42,11 @@ public:
     void LevelChangeComp();
 
     void Update(int milli);
-    void Move(psh::FVector);
+    void Move(psh::FVector location);
     void Disconnect();
     void Attack(char type);
     void RecvPacket(CRecvBuffer& buffer);
+
     PlayerState* State() { return _state; }
     void Stop();
 
@@ -56,14 +57,21 @@ public:
 
 
 
-    void Req(psh::ePacketType type)
+    void Req(psh::ePacketType type,int opt = -1)
     {
-        _packets.Enqueue({type,std::chrono::steady_clock::now()});
+        _packets.Enqueue({type,opt,std::chrono::steady_clock::now()});
     }
     
+    struct moveData
+    {
+        bool isSend = false;
+        psh::FVector dest{};
+    };
+
     struct packet
     {
         psh::ePacketType type;
+        int opt = -1;
         std::chrono::steady_clock::time_point request;
     };
     
@@ -86,7 +94,11 @@ public:
     bool isMove = false; 
 
     psh::FVector _location = {0,0};
-    int toDestinationTime = 0;
+    psh::FVector _dest = { 0,0 };
+    float toDestinationTime = 0;
+    float moveTime = 0;
+    float attackCooldown = 0;
+    int coin = 0;
 };
 
 

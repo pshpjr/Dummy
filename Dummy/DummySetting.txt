@@ -3,19 +3,19 @@ Base :
 	IP : 127.0.0.1
 	Port : 11333
 	useDB : 0
-	maxPlayer : 10
-	playerPerGroup : 50
+	maxPlayer : 2
+	playerPerGroup : 20
 }
 
 permil : 
 {
 	loopMs : 50
 
-	move : 500
-	moveRange : 6000
-	moveOffset : 100
+	move : 300
+	moveRange : 6400
+	moveOffset : 300
 	
-	feld : 100
+	feld : 20
 
 	disconnect : 50
 }

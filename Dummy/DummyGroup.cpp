@@ -42,7 +42,7 @@ void DummyGroup::OnLeave(SessionID id)
 {
     auto player = _players.find(id);
 
-    ASSERT_CRASH(player->second->State()->ValidDisconnect());
+    ASSERT_CRASH(player->second->State()->ValidDisconnect(),L"InvalidDisconnect");
 
     auto eraseCount = _players.erase(id);
     ASSERT_CRASH(eraseCount == 1,"Disconnec Err");
@@ -54,5 +54,7 @@ void DummyGroup::OnRecv(SessionID id, CRecvBuffer& recvBuffer)
 {
     auto player = _players.find(id);
 
-    player->second.get()->RecvPacket(recvBuffer);
+    player->second->RecvPacket(recvBuffer);
+
+        
 }

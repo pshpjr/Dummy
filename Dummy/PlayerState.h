@@ -58,7 +58,7 @@ class GameState : public PlayerState
 {
 public:
     PlayerState* Update(Player* player, int time) override;
-    PlayerState* RecvPacket(Player* player, CRecvBuffer& buffer) override;
+    PlayerState* RecvPacket(Player* player, CRecvBuffer& buffer) final;
 protected:
     virtual PlayerState* HandlePacket(psh::ePacketType type,Player* player,CRecvBuffer& buffer);
 };
@@ -85,13 +85,13 @@ class PveState : public GameState, public stateSingleton<PveState>
     
 public:
     PlayerState* Update(Player* player, int time) override;
-    PlayerState* RecvPacket (Player* player,CRecvBuffer& buffer) override;
+    PlayerState* HandlePacket(psh::ePacketType type, Player* player, CRecvBuffer& buffer) override;
 };
 
 class PvpState : public GameState, public stateSingleton<PvpState>
 {
 public:
-    PlayerState* RecvPacket (Player* player,CRecvBuffer& buffer) override;
+    PlayerState* HandlePacket(psh::ePacketType type, Player* player, CRecvBuffer& buffer) override;
 };
 
 class IdleState;

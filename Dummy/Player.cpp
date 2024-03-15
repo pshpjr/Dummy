@@ -27,6 +27,8 @@ void Player::CheckPacket(psh::ePacketType type)
 {
     packet data;
     bool peekResult = _packets.Peek(data);
+
+
     ASSERT_CRASH(peekResult,L"NotRequestPacket");
     ASSERT_CRASH(type == expect.at(data.type),L"RecvInvalidPacket");
     _packets.Dequeue();
@@ -56,6 +58,7 @@ void Player::GameLogin()
     auto gameLogin = SendBuffer::Alloc();
     psh::MakeGame_ReqLogin(gameLogin,_accountNo,_key);
     Req(psh::eGame_ReqLogin);
+
     _server->SendPacket(_sessionId,gameLogin);
 }
 
@@ -63,7 +66,11 @@ void Player::ReqLevelChange(psh::ServerType type)
 {
     auto reqLevelChange = SendBuffer::Alloc();
     psh::MakeGame_ReqLevelEnter(reqLevelChange,_accountNo,type);
+    if (type == psh::ServerType::End)
+        DebugBreak();
+
     containGroup = type;
+
     Req(psh::eGame_ReqLevelEnter);
     _server->SendPacket(_sessionId,reqLevelChange);
 }
@@ -82,10 +89,12 @@ void Player::Move(psh::FVector location)
 
     psh::MakeGame_ReqMove(moveBuffer, location);
 
+    if (isMove)
+    {
+        _location += (_dest - _location).Normalize() * moveTime * speedPerMS;
+    }
 
-    //psh::MakeGame_ReqMove(moveBuffer,_accountNo,_destinations[moveIndex]);
-
-    //moveIndex = (++moveIndex)%4;
+    _dest = location;
     Req(psh::eGame_ReqMove);
 
     toDestinationTime = (_location - location).Size() / speedPerMS;
@@ -100,18 +109,25 @@ void Player::Disconnect()
 
 void Player::Attack(char type)
 {
+    auto attack = SendBuffer::Alloc();
+    psh::MakeGame_ReqAttack(attack, type);
     Req(psh::eGame_ReqAttack);
+    _server->SendPacket(_sessionId, attack);
 }
 
 void Player::RecvPacket(CRecvBuffer& buffer)
 {
     _state = _state->RecvPacket(this, buffer);
     ASSERT_CRASH(buffer.CanPopSize() == 0);
+
 }
+
 
 void Player::Stop()
 {
     isMove = false;
     toDestinationTime = 0;
+    moveTime = 0;
+    _dest = _location;
 }
 
