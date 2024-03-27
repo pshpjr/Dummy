@@ -8,6 +8,8 @@ struct DummyPercent
 	int moveRange;
 	int moveOffset;
 	int disconnect;
+	int target;
+
 };
 extern DummyPercent gPermil;
 
@@ -18,6 +20,7 @@ struct ServerData
 	bool useDB;
 	int maxPlayer;
 	int playerPerGroup;
+	int reconnect;
 };
 
 extern ServerData gData;

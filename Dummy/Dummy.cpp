@@ -9,7 +9,7 @@ int main()
 {
     auto server = make_unique<Server>();
 
-    server->ClientInit(4, 4, 0);
+    server->ClientInit(4, 4, 50);
     server->Start();
     server->Wait();
 }

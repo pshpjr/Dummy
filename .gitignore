@@ -361,27 +361,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
-/Dummy/2024-2-20_ClientClose.txt
-/Dummy/2024-2-21_ClientClose.txt
-/Dummy/2024-2-21_ConnectionError.txt
-/Dummy/2024-2-21_Disconnect.txt
-/Dummy/2024-2-21_DummyDisconnect.txt
-/Dummy/2024-2-21_Recv Pop Err.txt
-/Dummy/2024-2-22_DummyDisconnect.txt
-/Dummy/2024-2-23_ClientClose.txt
-/Dummy/2024-2-23_Disconnect.txt
-/Dummy/2024-2-23_DummyDisconnect.txt
-/Dummy/2024-3-11_DisconnectSession.txt
-/Dummy/2024-3-11_DummyDisconnect.txt
-/Dummy/2024-3-14_ClientClose.txt
-/Dummy/2024-3-4_ClientClose.txt
-/Dummy/2024-3-4_DummyDisconnect.txt
-/Dummy/2024-3-5_ClientClose.txt
-/Dummy/2024-3-5_ConnectionError.txt
-/Dummy/2024-3-5_Disconnect.txt
-/Dummy/2024-3-7_ClientClose.txt
-/Dummy/2024-3-7_ConnectionError.txt
-/Dummy/2024-3-7_DisconnectSession.txt
-/Dummy/2024-3-7_DummyDisconnect.txt
-/Dummy/2024-3-7_Recv Pop Err.txt
-/Dummy/2024-3-8_ClientClose.txt
+
+*.txt
+!DummySettings.txt

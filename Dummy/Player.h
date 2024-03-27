@@ -9,13 +9,10 @@
 #include "SingleThreadCircularQ.h"
 
 
-
-
-
-class IOCP;
+class CLogger; class IOCP; class DummyGroup;
 class Player
 {
-    static constexpr float speedPerMS = 400 / 1000.0f;
+    static constexpr float speedPerMS = 200 / 1000.0f;
     friend class PlayerState;
     friend class LoginLoginState;
     friend class GameState;
@@ -23,9 +20,9 @@ class Player
     friend class GameLoginState;
 public:
     
-    Player(SessionID id,psh::AccountNo accountNo, IOCP* server) : _accountNo(accountNo), containGroup(psh::ServerType::End), _packets(),
+    Player(SessionID id,psh::AccountNo accountNo, IOCP* server, CLogger& logger) : _accountNo(accountNo), _containGroup(psh::ServerType::End), _packets(),
                                                                   _sessionId(id),
-                                                                  _server(server)
+                                                                  _server(server),_logger(logger)
     {
     }
     
@@ -47,19 +44,19 @@ public:
     void Attack(char type);
     void RecvPacket(CRecvBuffer& buffer);
 
-    PlayerState* State() { return _state; }
+    PlayerState* State() const { return _state; }
     void Stop();
 
     psh::ObjectID _me = -1;
     psh::ObjectID _target = -1;
     psh::AccountNo _accountNo;
-    psh::ServerType containGroup;
+    psh::ServerType _containGroup;
+    CLogger& _logger;
+    DummyGroup* _owner = nullptr;
 
-
-
-    void Req(psh::ePacketType type,int opt = -1)
+    void Req(psh::ePacketType type,int opt = -1,int opt2 = -1)
     {
-        _packets.Enqueue({type,opt,std::chrono::steady_clock::now()});
+        _packets.Enqueue({type,std::chrono::steady_clock::now(),_me,opt,opt2});
     }
     
     struct moveData
@@ -71,13 +68,18 @@ public:
     struct packet
     {
         psh::ePacketType type;
-        int opt = -1;
         std::chrono::steady_clock::time_point request;
+        psh::ObjectID obj = -1;
+        int opt = -1;
+        int opt2 = -1;
     };
     
     //서버 패킷 디버깅 관련
-    unsigned int _actionDelay;
+    unsigned int _actionDelay = 0;
     SingleThreadCircularQ<packet,32> _packets;
+
+
+    SingleThreadCircularQ<moveData, 32> _moves;
 
     //계정 및 통신 관련
     IOCP* _server = nullptr;
@@ -90,15 +92,19 @@ public:
     PlayerState* _state = DisconnectState::Get();
 
     //플레이어 정보
-    int hp;
-    bool isMove = false; 
+    int _hp = 0;
+    bool _isMove = false; 
 
     psh::FVector _location = {0,0};
     psh::FVector _dest = { 0,0 };
-    float toDestinationTime = 0;
-    float moveTime = 0;
-    float attackCooldown = 0;
-    int coin = 0;
+    psh::FVector _spawnLocation = { 0,0 };
+    float _toDestinationTime = 0;
+    float _moveTime = 0;
+    float _attackCooldown = 0;
+    int _coin = 0;
+
+    //삭제 및 재접속 관련
+    int _disconnectWait = 0;
 };
 
 

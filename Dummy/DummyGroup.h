@@ -22,8 +22,9 @@ public:
     void OnEnter(SessionID id) override;
     void OnLeave(SessionID id) override;
     void OnRecv(SessionID id, CRecvBuffer& recvBuffer) override;
-
+    void DeleteActor(SessionID id);
 private:
+    std::stack<psh::AccountNo> _accounts;
     psh::AccountNo g_AccountNo = 0;
     CLogger _dummyLogger;
     String _ip;
@@ -35,4 +36,6 @@ private:
     HashMap<SessionID,unique_ptr<Player>> _players;
     std::chrono::steady_clock::time_point _nextMonitor;
     bool _useDB;
+
+    queue<pair<std::chrono::steady_clock::time_point,SessionID>> _deleteWait;
 };

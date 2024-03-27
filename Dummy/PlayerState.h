@@ -8,6 +8,12 @@
 class CRecvBuffer;
 class Player;
 
+enum StateType
+{
+    other,
+    levelChange
+};
+
 template <typename T>
 class stateSingleton
 {
@@ -29,8 +35,10 @@ public:
     PlayerState* Disconnect(Player* player);
 
     virtual bool ValidDisconnect() { return false; }
-    static bool needAct(int permil){return psh::RandomUtil::Rand(0,1000) <= permil;}
+    StateType GetType() { return stateType; }
+    static bool needAct(int permil){return psh::RandomUtil::Rand(1,1000) <= permil;}
     DummyPercent permil = gPermil;
+    StateType stateType = other;
 };
 
 class DisconnectState : public PlayerState, public stateSingleton<DisconnectState>
@@ -66,6 +74,10 @@ protected:
 class LevelChangeState final : public GameState, public stateSingleton<LevelChangeState>
 {
 public:
+    LevelChangeState()
+    {
+        stateType = levelChange;
+    }
     PlayerState* Update(Player* player, int time) override {return this;}
 
 protected:
@@ -97,12 +109,11 @@ public:
 class IdleState;
 class HuntState;
 
-class DisconnectWaitState : public PlayerState, public stateSingleton<DisconnectWaitState>
+class DisconnectWaitState : public GameState, public stateSingleton<DisconnectWaitState>
 {
 public:
     DisconnectWaitState() = default;
     ~DisconnectWaitState() override = default;
-    PlayerState* Update(Player* player, int time) override;
-    PlayerState* RecvPacket(Player* player, CRecvBuffer& buffer) override;
     bool ValidDisconnect() override { return true; }
 };
+
