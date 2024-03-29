@@ -150,6 +150,9 @@
     <ClInclude Include="Server.h" />
     <ClInclude Include="SingleThreadCircularQ.h" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="DummySetting.txt" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

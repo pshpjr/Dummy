@@ -302,7 +302,8 @@ PlayerState* GameState::HandlePacket(psh::ePacketType type, Player* player, CRec
             ASSERT_CRASH(player->_me != -1, L"NotCreated But RecvPacket");
             psh::ObjectID attacker;
             char attackType;
-            psh::GetGame_ResAttack(buffer,attacker,attackType);
+            psh::FVector dir;
+            psh::GetGame_ResAttack(buffer, attacker, attackType, dir);
 
             if(attacker == player->_me)
             {
@@ -405,7 +406,7 @@ PlayerState* VillageState::Update(Player* player, int time)
     if(needAct(permil.field))
     {
         auto max = static_cast<int>(psh::ServerType::End)-1;
-        auto target = static_cast<psh::ServerType>(psh::RandomUtil::Rand(1,1));
+        auto target = static_cast<psh::ServerType>(psh::RandomUtil::Rand(1, max));
         player->ReqLevelChange(target);
         return LevelChangeState::Get();
     }
@@ -456,7 +457,8 @@ PlayerState* PveState::HandlePacket(psh::ePacketType type, Player* player, CRecv
         ASSERT_CRASH(player->_me != -1, L"NotCreated But RecvPacket");
         psh::ObjectID objectId;
         char attackType;
-        psh::GetGame_ResAttack(buffer, objectId, attackType);
+        psh::FVector dir;
+        psh::GetGame_ResAttack(buffer, objectId, attackType, dir);
         if (objectId == player->_me)
         {
             player->CheckPacket(type);
@@ -466,10 +468,14 @@ PlayerState* PveState::HandlePacket(psh::ePacketType type, Player* player, CRecv
     case psh::eGame_ResHit:
     {
         ASSERT_CRASH(player->_me != -1, L"NotCreated But RecvPacket");
-        psh::ObjectID objectId;
+        psh::ObjectID victim;
         psh::ObjectID attacker;
         int hp;
-        psh::GetGame_ResHit(buffer, objectId, attacker, hp);
+        psh::GetGame_ResHit(buffer, victim, attacker, hp);
+        if (victim == player->_me)
+        {
+            player->_hp = hp;
+        }
     }
     break;
     case psh::eGame_ResMove:
@@ -504,6 +510,18 @@ PlayerState* PveState::HandlePacket(psh::ePacketType type, Player* player, CRecv
     return this;
 }
 
+PlayerState* PvpState::Update(Player* player, int time)
+{
+    if (needAct(permil.field))
+    {
+        auto target = static_cast<psh::ServerType>(0);
+        player->ReqLevelChange(target);
+        return LevelChangeState::Get();
+    }
+
+    return GameState::Update(player, time);
+}
+
 PlayerState* PvpState::HandlePacket(psh::ePacketType type, Player* player, CRecvBuffer& buffer)
 {
     switch (type)
@@ -512,21 +530,26 @@ PlayerState* PvpState::HandlePacket(psh::ePacketType type, Player* player, CRecv
     {
         ASSERT_CRASH(player->_me != -1, L"NotCreated But RecvPacket");
         psh::ObjectID objectId;
-        char type;
-        psh::GetGame_ResAttack(buffer, objectId, type);
+        char attackType;
+        psh::FVector dir;
+        psh::GetGame_ResAttack(buffer, objectId, attackType,dir);
         if (objectId == player->_me)
         {
-            player->CheckPacket(psh::eGame_ReqAttack);
+            player->CheckPacket(type);
         }
     }
     break;
     case psh::eGame_ResHit:
     {
         ASSERT_CRASH(player->_me != -1, L"NotCreated But RecvPacket");
-        psh::ObjectID objectId;
+        psh::ObjectID victim;
         psh::ObjectID attacker;
         int hp;
-        psh::GetGame_ResHit(buffer, objectId, attacker, hp);
+        psh::GetGame_ResHit(buffer, victim, attacker, hp);
+        if (victim == player->_me)
+        {
+            player->_hp = hp;
+        }
     }
     break;
     case psh::eGame_ResMove:
@@ -561,9 +584,11 @@ PlayerState* PvpState::HandlePacket(psh::ePacketType type, Player* player, CRecv
         psh::FVector dir;
 
         psh::GetGame_ResCreateActor(buffer, objectId,group,charType, loc, dir, isSpawn);
-        if (player->_me == -1)
+        if (player->_me == objectId)
         {
-            player->_me = objectId;
+            player->_spawnLocation = loc;
+            player->_location = loc;
+            player->_dest = loc;
         }
         else if (player->_target == -1
             && player->_me != objectId)
@@ -574,7 +599,7 @@ PlayerState* PvpState::HandlePacket(psh::ePacketType type, Player* player, CRecv
     }
     break;
     default:
-        ASSERT_CRASH(false, "Invalid Packet Type");
+        return GameState::HandlePacket(type, player, buffer);
         break;
     }
     return this;

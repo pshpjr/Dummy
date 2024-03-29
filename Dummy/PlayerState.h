@@ -103,6 +103,7 @@ public:
 class PvpState : public GameState, public stateSingleton<PvpState>
 {
 public:
+    PlayerState* Update(Player* player, int time) override;
     PlayerState* HandlePacket(psh::ePacketType type, Player* player, CRecvBuffer& buffer) override;
 };
 

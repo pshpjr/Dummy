@@ -41,4 +41,5 @@ void Server::OnRecvPacket(SessionID sessionId, CRecvBuffer& buffer)
 
 void Server::OnMonitorRun()
 {
+    PrintMonitorString();
 }

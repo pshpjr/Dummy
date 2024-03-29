@@ -107,14 +107,14 @@ void Player::Move(psh::FVector location)
 
     auto dst = (location - _location).Size();
 
-    if (dst < 30)
+    if (dst < 60)
     {
         return;
     }
     else 
     {
-        auto dir = (location - _location).Normalize();
-        _dest = location - dir * 30;
+        _dir = (location - _location).Normalize();
+        _dest = location - _dir * 30;
     }
 
     if (_location == _dest)
@@ -145,7 +145,7 @@ void Player::Disconnect()
 void Player::Attack(char type)
 {
     auto attack = SendBuffer::Alloc();
-    psh::MakeGame_ReqAttack(attack, type);
+    psh::MakeGame_ReqAttack(attack, type,_dir);
     Req(psh::eGame_ReqAttack);
     _server->SendPacket(_sessionId, attack);
 }

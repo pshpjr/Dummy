@@ -3,8 +3,8 @@ Base :
 	IP : 127.0.0.1
 	Port : 11333
 	useDB : 0
-	maxPlayer : 100
-	playerPerGroup : 10
+	maxPlayer : 500
+	playerPerGroup : 50
 	reconnectTime : 3000
 }
 

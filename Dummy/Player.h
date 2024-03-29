@@ -56,7 +56,9 @@ public:
 
     void Req(psh::ePacketType type,int opt = -1,int opt2 = -1)
     {
-        _packets.Enqueue({type,std::chrono::steady_clock::now(),_me,opt,opt2});
+        auto result = _packets.Enqueue({type,std::chrono::steady_clock::now(),_me,opt,opt2});
+
+        ASSERT_CRASH(result, "");
     }
     
     struct moveData
@@ -76,10 +78,9 @@ public:
     
     //서버 패킷 디버깅 관련
     unsigned int _actionDelay = 0;
-    SingleThreadCircularQ<packet,32> _packets;
+    SingleThreadCircularQ<packet,128> _packets;
 
 
-    SingleThreadCircularQ<moveData, 32> _moves;
 
     //계정 및 통신 관련
     IOCP* _server = nullptr;
@@ -97,6 +98,7 @@ public:
 
     psh::FVector _location = {0,0};
     psh::FVector _dest = { 0,0 };
+    psh::FVector _dir = { 0,0 };
     psh::FVector _spawnLocation = { 0,0 };
     float _toDestinationTime = 0;
     float _moveTime = 0;
