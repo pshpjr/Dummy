@@ -10,7 +10,7 @@ class DummyGroup : public Group
 {
 public:
     DummyGroup()
-        : _dummyLogger(L"DummyLog.txt")
+        : _dummyLogger()
         , _ip(gData.ip), _port(gData.port)
         , _maxPlayerCount(gData.playerPerGroup)
         , _nextMonitor(std::chrono::steady_clock::now()+1s)
@@ -20,7 +20,7 @@ public:
     void OnCreate() override;
     void OnUpdate(int milli) override;
     void OnEnter(SessionID id) override;
-    void OnLeave(SessionID id) override;
+    void OnLeave(SessionID id, int wsaErrCode) override;
     void OnRecv(SessionID id, CRecvBuffer& recvBuffer) override;
     void DeleteActor(SessionID id);
 private:

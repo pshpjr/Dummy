@@ -4,7 +4,8 @@ struct DummyPercent
 {
 	int loopMs;
 	int move;
-	int field;
+	int toField;
+	int toVillage;
 	int moveRange;
 	int moveOffset;
 	int disconnect;
@@ -20,6 +21,7 @@ struct ServerData
 	bool useDB;
 	int maxPlayer;
 	int playerPerGroup;
+	int startAccount;
 	int reconnect;
 };
 

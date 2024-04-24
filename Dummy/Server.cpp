@@ -13,6 +13,7 @@ Server::Server() : IOCP(false)
     dummyParser.GetValue(L"Base.useDB", gData.useDB);
     dummyParser.GetValue(L"Base.maxPlayer", gData.maxPlayer);
     dummyParser.GetValue(L"Base.playerPerGroup", gData.playerPerGroup);
+    dummyParser.GetValue(L"Base.startAccount", gData.startAccount);
     dummyParser.GetValue(L"Base.reconnectTime", gData.reconnect);
 
     dummyParser.GetValue(L"permil.loopMs", gPermil.loopMs);
@@ -21,7 +22,8 @@ Server::Server() : IOCP(false)
     dummyParser.GetValue(L"permil.moveOffset", gPermil.moveOffset);
     dummyParser.GetValue(L"permil.disconnect", gPermil.disconnect);
     dummyParser.GetValue(L"permil.setTarget", gPermil.target);
-    dummyParser.GetValue(L"permil.field", gPermil.field);
+    dummyParser.GetValue(L"permil.toField", gPermil.toField);
+    dummyParser.GetValue(L"permil.toVillage", gPermil.toVillage);
 
 }
 

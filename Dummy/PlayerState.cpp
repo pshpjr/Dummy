@@ -15,7 +15,6 @@ PlayerState* DisconnectState::Update(Player* player, int time)
 {
     player->LoginLogin();
     return LoginLoginState::Get();
-
 }
 
 PlayerState* DisconnectState::RecvPacket(Player* player,CRecvBuffer& buffer)
@@ -43,9 +42,11 @@ PlayerState* LoginLoginState::RecvPacket(Player* player,CRecvBuffer& buffer)
             psh::AccountNo accountNo;
             psh::GetLogin_ResLogin(buffer,accountNo,id,result,player->_key);
 
-            player->CheckPacket(type);
             ASSERT_CRASH(id == player->_id, "Login Result ID Wrong");
             ASSERT_CRASH(result == psh::eLoginResult::LoginSuccess, "Login Result ID Wrong");
+            ASSERT_CRASH(accountNo == player->_accountNo, "InvalidAccountNO");
+
+            player->CheckPacket(type);
 
             player->GameLogin();
 
@@ -91,6 +92,7 @@ PlayerState* GameLoginState::RecvPacket(Player* player, CRecvBuffer& buffer)
             player->LevelChangeComp();
             player->_containGroup = server;
             player->_me = myId;
+            player->needUpdate = false;
             switch (server)
             {
             case psh::ServerType::Village:
@@ -119,6 +121,10 @@ PlayerState* GameLoginState::RecvPacket(Player* player, CRecvBuffer& buffer)
 
 PlayerState* GameState::Update(Player* player, int time)
 {
+    if (!player->needUpdate)
+        return this;
+    if (player->_hp <= 0)
+        return this;
     //이동중이면 도착 전 까진 이동만 함. 
     if(player->_isMove)
     {
@@ -132,6 +138,12 @@ PlayerState* GameState::Update(Player* player, int time)
     //플레이어 멈춘 상태. 타겟이 있다면 공격.
      else if (player->_target != -1)
      {
+        if (player->_location != player->_dest)
+        {
+            player->_target = -1;
+            return this;
+        }
+
 
         if (player->_attackCooldown > 0) 
         {
@@ -152,11 +164,15 @@ PlayerState* GameState::Update(Player* player, int time)
 
         if ((dest - player->_spawnLocation).Size() > permil.moveOffset *2)
         {
-            player->Move(player->_spawnLocation);
+            player->Move(player->_spawnLocation, Player::goSpawn);
 
+            player->_target = -1;
         }
-        else
-            player->Move(dest);
+        else 
+        {
+            player->Move(dest, Player::randomMove);
+        }
+    
     }
     else if (needAct(permil.disconnect))
     {
@@ -192,6 +208,7 @@ PlayerState* GameState::HandlePacket(psh::ePacketType type, Player* player, CRec
             //여기선 레벨 전환 없음. 레벨은 항상 levelChangeState에서. 
             ASSERT_CRASH(false,"Invalid Level change");
         }
+        break;
     case psh::eGame_ResCreateActor:
         {
             psh::ObjectID objectId;
@@ -205,9 +222,13 @@ PlayerState* GameState::HandlePacket(psh::ePacketType type, Player* player, CRec
 
             if (objectId == player->_me)
             {
+                if (loc == psh::FVector(0, 0))
+                    __debugbreak();
+
                 player->_spawnLocation = loc;
                 player->_location = loc;
                 player->_dest = loc;
+                player->needUpdate = true;
             }
 
             else if (player->_target == -1 
@@ -294,7 +315,10 @@ PlayerState* GameState::HandlePacket(psh::ePacketType type, Player* player, CRec
             {
                 player->CheckPacket(type);
             }
-
+            else if (id == player->_target)
+            {
+                player->Move(loc);
+            }
         }
         break;
     case psh::eGame_ResAttack:
@@ -327,6 +351,14 @@ PlayerState* GameState::HandlePacket(psh::ePacketType type, Player* player, CRec
             if (victim == player->_me)
             {
                 player->_hp = hp;
+
+                if (player->_hp<= 0)
+                {
+                    player->Disconnect();
+
+                    return DisconnectWaitState::Get();
+                }
+
             }
         }
         break;
@@ -337,6 +369,8 @@ PlayerState* GameState::HandlePacket(psh::ePacketType type, Player* player, CRec
 
     return this;
 }
+
+
 
 PlayerState* LevelChangeState::HandlePacket(psh::ePacketType type, Player* player, CRecvBuffer& buffer)
 {
@@ -358,6 +392,8 @@ PlayerState* LevelChangeState::HandlePacket(psh::ePacketType type, Player* playe
         player->_toDestinationTime = 0;
         player->LevelChangeComp();
         player->_containGroup = server;
+        player->_dest = { 0,0 };
+        player->_location = { 0,0 };
         switch (server)
         {
         case psh::ServerType::Village:
@@ -396,18 +432,19 @@ PlayerState* LevelChangeState::HandlePacket(psh::ePacketType type, Player* playe
     }
     break;
     default :
-        GameState::HandlePacket(type, player, buffer);
+        return GameState::HandlePacket(type, player, buffer);
     }
     return this;
 }
 
 PlayerState* VillageState::Update(Player* player, int time)
 {
-    if(needAct(permil.field))
+    if(needAct(permil.toField))
     {
         auto max = static_cast<int>(psh::ServerType::End)-1;
         auto target = static_cast<psh::ServerType>(psh::RandomUtil::Rand(1, max));
         player->ReqLevelChange(target);
+        player->_target = -1;
         return LevelChangeState::Get();
     }
 
@@ -431,17 +468,17 @@ PlayerState* VillageState::HandlePacket(psh::ePacketType type, Player* player, C
         }
         break;
     default:
-        GameState::HandlePacket(type,player,buffer);
+        return GameState::HandlePacket(type,player,buffer);
     }
-    return this;
 }
 
 PlayerState* PveState::Update(Player* player, int time)
 {
-    if(needAct(permil.field))
+    if(needAct(permil.toVillage))
     {
         auto target = static_cast<psh::ServerType>(0);
         player->ReqLevelChange(target);
+        player->_target = -1;
         return LevelChangeState::Get();
     }
 
@@ -475,6 +512,13 @@ PlayerState* PveState::HandlePacket(psh::ePacketType type, Player* player, CRecv
         if (victim == player->_me)
         {
             player->_hp = hp;
+
+            if (player->_hp <= 0)
+            {
+                player->Disconnect();
+
+                return DisconnectWaitState::Get();
+            }
         }
     }
     break;
@@ -492,7 +536,6 @@ PlayerState* PveState::HandlePacket(psh::ePacketType type, Player* player, CRecv
         }
         else if (player->_target == -1 
             && group == psh::eCharacterGroup::Monster 
-            && needAct(permil.target)
             && (loc - player->_spawnLocation).Size() <= 300)
         {
             player->_target = id;
@@ -512,10 +555,11 @@ PlayerState* PveState::HandlePacket(psh::ePacketType type, Player* player, CRecv
 
 PlayerState* PvpState::Update(Player* player, int time)
 {
-    if (needAct(permil.field))
+    if (needAct(permil.toVillage))
     {
         auto target = static_cast<psh::ServerType>(0);
         player->ReqLevelChange(target);
+        player->_target = -1;
         return LevelChangeState::Get();
     }
 
@@ -549,6 +593,13 @@ PlayerState* PvpState::HandlePacket(psh::ePacketType type, Player* player, CRecv
         if (victim == player->_me)
         {
             player->_hp = hp;
+
+            if (player->_hp <= 0)
+            {
+                player->Disconnect();
+
+                return DisconnectWaitState::Get();
+            }
         }
     }
     break;
@@ -563,14 +614,16 @@ PlayerState* PvpState::HandlePacket(psh::ePacketType type, Player* player, CRecv
         {
             player->CheckPacket(type);
         }
-        else if (player->_target == -1)
+        else if (player->_target == -1 
+            && (loc - player->_spawnLocation).Size() <= 300)
         {
             player->_target = id;
             player->Move(loc);
         }
         else if (id == player->_target)
         {
-            player->Move(loc);
+
+            player->Move(loc, Player::targetMove);
         }
     }
     break;
@@ -589,17 +642,41 @@ PlayerState* PvpState::HandlePacket(psh::ePacketType type, Player* player, CRecv
             player->_spawnLocation = loc;
             player->_location = loc;
             player->_dest = loc;
+            player->needUpdate = true;
         }
         else if (player->_target == -1
-            && player->_me != objectId)
+            && player->_me != objectId
+            && group != psh::eCharacterGroup::Item
+            && needAct(permil.target))
         {
             player->_target = objectId;
-            player->Move(loc);
+            player->Move(loc, Player::newTarget);
         }
     }
     break;
     default:
         return GameState::HandlePacket(type, player, buffer);
+        break;
+    }
+    return this;
+}
+
+PlayerState* DisconnectWaitState::HandlePacket(psh::ePacketType type, Player* player, CRecvBuffer& buffer)
+{
+    switch (type)
+    {
+
+    case psh::eGame_ResLevelEnter:
+    {
+        psh::AccountNo accountNo;
+        psh::ObjectID myId;
+        psh::ServerType server;
+        psh::GetGame_ResLevelEnter(buffer, accountNo, myId, server);
+
+    }
+    break;
+    default:
+        return  GameState::HandlePacket(type, player, buffer);
         break;
     }
     return this;

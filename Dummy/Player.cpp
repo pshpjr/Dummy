@@ -6,7 +6,13 @@
 
 void Player::Update(int milli)
 {
-    _state = _state->Update(this, milli);
+    if (_moveDelay > 0)
+    {
+        _moveDelay -= milli;
+    }
+
+    if (needUpdate)
+        _state = _state->Update(this, milli);
 }
 
 inline static HashMap<psh::ePacketType,psh::ePacketType> expect = 
@@ -63,6 +69,7 @@ void Player::GameLogin()
 
 void Player::ReqLevelChange(psh::ServerType type)
 {
+    needUpdate = false;
     auto reqLevelChange = SendBuffer::Alloc();
     psh::MakeGame_ReqLevelEnter(reqLevelChange,_accountNo,type);
     if (type == psh::ServerType::End)
@@ -82,52 +89,64 @@ void Player::LevelChangeComp()
 }
 
 
-void Player::Move(psh::FVector location)
+void Player::Move(psh::FVector location, moveReason reason)
 {
+   
+
     if (_state->GetType() == StateType::levelChange)
         __debugbreak();
 
     psh::FVector offset = {};
     if (_isMove)
     {
-        auto dist = (_dest - _location).Normalize();
-        if (isnan(dist.X))
-        {
-            _location = _dest;
-        }
-        else
-        {
-            offset = dist* _moveTime* speedPerMS;
-            _location += offset;
-        }
+        offset = _dir * _moveTime * speedPerMS;
+        _location += offset;
+
         _toDestinationTime = 0;
         _moveTime = 0;
         _isMove = false;
     }
 
-    auto dst = (location - _location).Size();
-
-    if (dst < 60)
-    {
+    if (location == _location)
         return;
-    }
-    else 
-    {
-        _dir = (location - _location).Normalize();
-        _dest = location - _dir * 30;
-    }
 
-    if (_location == _dest)
+
+    auto dir = (location - _location).Normalize();
+    auto newDestination = location - dir * 40;
+    _attackDir = dir;
+
+    if (_moveDelay > 0)
     {
         return;
     }
 
+    if ((newDestination - _location).Size()  > gPermil.moveOffset*2)
+    {
+        _target = -1;
+        return;
+    }
+    if ((newDestination - _location).Size() < 5)
+    {
+        return;
+    }
+    if ((newDestination - _dest).Size() < 5)
+    {
+        return;
+    }
+
+
+    moveCount++;
+
+    _moveDelay += 500;
     Req(psh::eGame_ReqMove,location.X,_dest.X);
-    
+
+    _isMove = true;
+    _dest = newDestination;
+
+    _dir = dir;
 
     _toDestinationTime = (_dest - _location).Size() / speedPerMS;
-    _isMove = true;
-
+    writeMoveDebug(reason);
     auto moveBuffer = SendBuffer::Alloc();
 
     psh::MakeGame_ReqMove(moveBuffer, _dest);
@@ -145,7 +164,7 @@ void Player::Disconnect()
 void Player::Attack(char type)
 {
     auto attack = SendBuffer::Alloc();
-    psh::MakeGame_ReqAttack(attack, type,_dir);
+    psh::MakeGame_ReqAttack(attack, type,_attackDir);
     Req(psh::eGame_ReqAttack);
     _server->SendPacket(_sessionId, attack);
 }

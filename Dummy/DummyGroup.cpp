@@ -12,22 +12,16 @@ void DummyGroup::OnCreate()
    
     for (int i = 0; i < gData.playerPerGroup; i++)
     {
-        _accounts.push(g_AccountNo + i);
+        _accounts.push(g_AccountNo + i+ gData.startAccount);
     }
 }
 
 void DummyGroup::OnUpdate(int milli)
 {
    
-    if (chrono::steady_clock::now() > _nextMonitor)
-    {
-        printf("Group %d , work : %lld QUeued : %d, Handled : %lld\n", int(GetGroupID()), GetWorkTime(),GetQueued(),GetJobTps() );
-        _nextMonitor += 1s;
-    }
-
-    auto toConnect =  _maxPlayerCount - _players.size();
+    auto toConnect =  min(_maxPlayerCount - _players.size(),5);
     
-    for(int i = 0; i<toConnect;i++)
+    for(int i = 0; i< toConnect;i++)
     {
         auto newPlayer = _iocp->GetClientSession(_ip,_port);
         auto id = newPlayer.Value();
@@ -36,8 +30,10 @@ void DummyGroup::OnUpdate(int milli)
         _players.emplace(id, make_unique<Player>(id, account, _iocp,_dummyLogger));
     }
 
-    for(auto& [_,player] : _players)
+
+    for (auto& [_, player] : _players)
     {
+
         player->Update(milli);
     }
 
@@ -56,6 +52,26 @@ void DummyGroup::OnUpdate(int milli)
         }
     }
 
+    if (chrono::steady_clock::now() > _nextMonitor)
+    {
+        int delaySum = 0;
+        int delayMax = 0;
+        for (auto& [_, player] : _players)
+        {
+            //ASSERT_CRASH(player->moveCount < 20);
+            player->moveCount = 0;
+
+            delaySum += player->_actionDelay;
+
+            delayMax = max(delayMax, player->_actionDelay);
+            player->_actionDelay = 0;
+        }
+
+        int delayAvg = delaySum / _players.size();
+
+        printf("Group %d , work : %lld QUeued : %d, Handled : %lld\n delay : %d, max : %d\n", int(GetGroupID()), GetWorkTime(), GetQueued(), GetJobTps(), delayAvg,delayMax);
+        _nextMonitor += 1s;
+    }
 
 }
 
@@ -64,17 +80,18 @@ void DummyGroup::OnEnter(SessionID id)
     
 }
 
-void DummyGroup::OnLeave(SessionID id)
+void DummyGroup::OnLeave(SessionID id, int wsaErrCode)
 {
     auto it = _players.find(id);
     auto player = it->second.get();
     if(!player->State()->ValidDisconnect())
     {
+        ASSERT_CRASH(false);
         std::string cState = typeid(*player->State()).name();
         String wState = String(cState.begin(),cState.end());
         //String toPrint = std::format(L"InvalidDisconnect.  state : {}",typeid(player->State()).name());
         _dummyLogger.Write(L"DummyDisconnect",CLogger::LogLevel::Error
-            ,L"InvalidDisconnect AccountNO : %lld, state : %s",player->_accountNo,wState.c_str());
+            ,L"InvalidDisconnect AccountNO : %lld, state : %s, WSAError : %d",player->_accountNo,wState.c_str(), wsaErrCode);
     }
 
     _deleteWait.emplace(std::chrono::steady_clock::now() + std::chrono::milliseconds(gData.reconnect), player->_sessionId);

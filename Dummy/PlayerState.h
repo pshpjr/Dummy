@@ -116,5 +116,6 @@ public:
     DisconnectWaitState() = default;
     ~DisconnectWaitState() override = default;
     bool ValidDisconnect() override { return true; }
+    PlayerState* HandlePacket(psh::ePacketType type, Player* player, CRecvBuffer& buffer) override;
 };
 
