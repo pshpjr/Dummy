@@ -1,5 +1,6 @@
 #pragma once
 #include <Types.h>
+#include <atomic>
 struct DummyPercent
 {
 	int loopMs;
@@ -26,3 +27,12 @@ struct ServerData
 };
 
 extern ServerData gData;
+
+struct DummyDelay
+{
+	std::atomic<int> delay;
+	std::atomic<int> count;
+	std::atomic<int> max;
+};
+
+extern DummyDelay gDelay;

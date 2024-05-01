@@ -138,11 +138,6 @@ PlayerState* GameState::Update(Player* player, int time)
     //플레이어 멈춘 상태. 타겟이 있다면 공격.
      else if (player->_target != -1)
      {
-        if (player->_location != player->_dest)
-        {
-            player->_target = -1;
-            return this;
-        }
 
 
         if (player->_attackCooldown > 0) 
@@ -499,6 +494,10 @@ PlayerState* PveState::HandlePacket(psh::ePacketType type, Player* player, CRecv
         if (objectId == player->_me)
         {
             player->CheckPacket(type);
+        }
+        else if (player->_target == -1)
+        {
+            player->_target = objectId;
         }
     }
     break;

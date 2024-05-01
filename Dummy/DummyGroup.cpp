@@ -4,6 +4,7 @@
 
 #include "IOCP.h"
 #include "Player.h"
+#include <CoreGlobal.h>
 
 void DummyGroup::OnCreate()
 {
@@ -24,6 +25,13 @@ void DummyGroup::OnUpdate(int milli)
     for(int i = 0; i< toConnect;i++)
     {
         auto newPlayer = _iocp->GetClientSession(_ip,_port);
+        if (newPlayer.HasError())
+        {
+            gLogger->Write(L"Connection fail", CLogger::LogLevel::Invalid, L"Err when Connect Errcode : %d", newPlayer.Error());
+            return;
+        }
+
+
         auto id = newPlayer.Value();
         _iocp->MoveSession(id,GetGroupID());
         auto account = _accounts.top(); _accounts.pop();
@@ -58,8 +66,6 @@ void DummyGroup::OnUpdate(int milli)
         int delayMax = 0;
         for (auto& [_, player] : _players)
         {
-            //ASSERT_CRASH(player->moveCount < 20);
-            player->moveCount = 0;
 
             delaySum += player->_actionDelay;
 
@@ -69,7 +75,6 @@ void DummyGroup::OnUpdate(int milli)
 
         int delayAvg = delaySum / _players.size();
 
-        printf("Group %d , work : %lld QUeued : %d, Handled : %lld\n delay : %d, max : %d\n", int(GetGroupID()), GetWorkTime(), GetQueued(), GetJobTps(), delayAvg,delayMax);
         _nextMonitor += 1s;
     }
 
@@ -86,7 +91,6 @@ void DummyGroup::OnLeave(SessionID id, int wsaErrCode)
     auto player = it->second.get();
     if(!player->State()->ValidDisconnect())
     {
-        ASSERT_CRASH(false);
         std::string cState = typeid(*player->State()).name();
         String wState = String(cState.begin(),cState.end());
         //String toPrint = std::format(L"InvalidDisconnect.  state : {}",typeid(player->State()).name());
