@@ -4,7 +4,7 @@ Base :
 	Port : 11333
 	useDB : 0
 	startAccount : 0
-	maxPlayer : 6000
+	maxPlayer : 50
 	playerPerGroup : 200
 	reconnectTime : 3000
 }
@@ -18,7 +18,7 @@ permil :
 	moveOffset : 300
 	setTarget : 1000
 	toField : 21
-	toVillage : 7
+	toVillage : 0
 
 	disconnect : 5
 }

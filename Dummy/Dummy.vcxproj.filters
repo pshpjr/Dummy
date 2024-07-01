@@ -56,6 +56,9 @@
     <ClInclude Include="SingleThreadCircularQ.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="TextFileReader.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="DummySetting.txt" />

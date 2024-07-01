@@ -40,7 +40,7 @@ public:
     void GameLogin();
     void ReqLevelChange(psh::ServerType type);
     void LevelChangeComp();
-
+    void Chat();
     void Update(int milli);
 
     void Disconnect();

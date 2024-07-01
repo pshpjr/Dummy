@@ -124,7 +124,11 @@ PlayerState* GameState::Update(Player* player, int time)
     if (!player->needUpdate)
         return this;
     if (player->_hp <= 0)
+    {
         return this;
+    }
+
+
     //이동중이면 도착 전 까진 이동만 함. 
     if(player->_isMove)
     {
@@ -138,7 +142,6 @@ PlayerState* GameState::Update(Player* player, int time)
     //플레이어 멈춘 상태. 타겟이 있다면 공격.
      else if (player->_target != -1)
      {
-
 
         if (player->_attackCooldown > 0) 
         {
@@ -160,20 +163,24 @@ PlayerState* GameState::Update(Player* player, int time)
         if ((dest - player->_spawnLocation).Size() > permil.moveOffset *2)
         {
             player->Move(player->_spawnLocation, Player::goSpawn);
-
+ 
             player->_target = -1;
         }
         else 
         {
             player->Move(dest, Player::randomMove);
         }
-    
     }
     else if (needAct(permil.disconnect))
     {
         player->Disconnect();
         return DisconnectWaitState::Get();
     }
+    if (needAct(permil.chat))
+    {
+        player->Chat();
+    }
+
     return this;
 }
 
@@ -240,6 +247,10 @@ PlayerState* GameState::HandlePacket(psh::ePacketType type, Player* player, CRec
                 psh::ObjectID objectId;
                 int hp;
                 psh::GetGame_ResChracterDetail(buffer,objectId,hp);
+                if (objectId == player->_me)
+                {
+                    player->_hp = hp;
+                }
             }
         break;
         case psh::eGame_ResPlayerDetail:
@@ -318,12 +329,13 @@ PlayerState* GameState::HandlePacket(psh::ePacketType type, Player* player, CRec
         break;
     case psh::eGame_ResAttack:
         {
+
             ASSERT_CRASH(player->_me != -1, L"NotCreated But RecvPacket");
             psh::ObjectID attacker;
             char attackType;
+
             psh::FVector dir;
             psh::GetGame_ResAttack(buffer, attacker, attackType, dir);
-
             if(attacker == player->_me)
             {
                 player->CheckPacket(type);
@@ -357,6 +369,13 @@ PlayerState* GameState::HandlePacket(psh::ePacketType type, Player* player, CRec
             }
         }
         break;
+    case psh::eGame_ResChat:
+    {
+        psh::ObjectID target;
+        String chat;
+        psh::GetGame_ResChat(buffer, target,chat);
+    }
+    break;
     default:
         ASSERT_CRASH(false, "Invalid Packet Type");
         break;
@@ -493,11 +512,8 @@ PlayerState* PveState::HandlePacket(psh::ePacketType type, Player* player, CRecv
         psh::GetGame_ResAttack(buffer, objectId, attackType, dir);
         if (objectId == player->_me)
         {
+
             player->CheckPacket(type);
-        }
-        else if (player->_target == -1)
-        {
-            player->_target = objectId;
         }
     }
     break;

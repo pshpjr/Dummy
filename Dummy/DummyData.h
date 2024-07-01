@@ -11,9 +11,13 @@ struct DummyPercent
 	int moveOffset;
 	int disconnect;
 	int target;
-
+	int chat;
 };
+
 extern DummyPercent gPermil;
+
+class TextFileReader;
+extern TextFileReader* gChatText;
 
 struct ServerData
 {

@@ -4,9 +4,14 @@
 #include <iostream>
 #include "Server.h"
 
-
 int main()
 {
+
+    std::locale::global(std::locale("ko_KR.UTF-8"));
+
+
+
+
     auto server = make_unique<Server>();
 
     server->ClientInit(4, 4, 50);

@@ -3,6 +3,7 @@
 #include "PacketGenerated.h"
 #include "PlayerState.h"
 #include "Server.h"
+#include "TextFileReader.h"
 
 void Player::Update(int milli)
 {
@@ -31,7 +32,7 @@ void Player::CheckPacket(psh::ePacketType type)
     packet data;
     bool peekResult = _packets.Peek(data);
 
-
+    
     ASSERT_CRASH(peekResult,L"NotRequestPacket");
     ASSERT_CRASH(type == expect.at(data.type),L"RecvInvalidPacket");
     _packets.Dequeue();
@@ -86,6 +87,13 @@ void Player::LevelChangeComp()
     auto levelChange = SendBuffer::Alloc();
     psh::MakeGame_ReqChangeComplete(levelChange,_accountNo);
     _server->SendPacket(_sessionId,levelChange);
+}
+
+void Player::Chat()
+{
+    auto chatPacket = SendBuffer::Alloc();
+    psh::MakeGame_ReqChat(chatPacket, gChatText->GetRandString());
+    _server->SendPacket(_sessionId, chatPacket);
 }
 
 
@@ -165,7 +173,7 @@ void Player::Attack(char type)
 {
     auto attack = SendBuffer::Alloc();
     psh::MakeGame_ReqAttack(attack, type,_attackDir);
-    Req(psh::eGame_ReqAttack);
+    Req(psh::eGame_ReqAttack,_target,static_cast<int>( _containGroup));
     _server->SendPacket(_sessionId, attack);
 }
 

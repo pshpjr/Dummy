@@ -2,11 +2,12 @@
 #include "DummyData.h"
 
 #include "DummyGroup.h"
+#include "TextFileReader.h"
 
 Server::Server() : IOCP(false)
 {
     dummyParser.Init(L"DummySetting.txt");
-
+    gChatText = new TextFileReader(L"chatData.txt");
   
     dummyParser.GetValue(L"Base.IP", gData.ip);
     dummyParser.GetValue(L"Base.Port", gData.port);
@@ -24,6 +25,7 @@ Server::Server() : IOCP(false)
     dummyParser.GetValue(L"permil.setTarget", gPermil.target);
     dummyParser.GetValue(L"permil.toField", gPermil.toField);
     dummyParser.GetValue(L"permil.toVillage", gPermil.toVillage);
+    dummyParser.GetValueOrDefault(L"permil.chat", gPermil.chat, L"100");
 
 }
 

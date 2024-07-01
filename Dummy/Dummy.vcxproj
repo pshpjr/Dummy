@@ -124,7 +124,8 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <Optimization>MaxSpeed</Optimization>
+      <Optimization>Disabled</Optimization>
+      <AdditionalOptions>/Zo %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -149,6 +150,7 @@
     <ClInclude Include="Rand.h" />
     <ClInclude Include="Server.h" />
     <ClInclude Include="SingleThreadCircularQ.h" />
+    <ClInclude Include="TextFileReader.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="DummySetting.txt" />
