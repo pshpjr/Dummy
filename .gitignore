@@ -364,3 +364,8 @@ FodyWeavers.xsd
 
 *.txt
 !DummySettings.txt
+.idea
+include
+lib
+/cmake-build-debug/
+/cmake-build-release/

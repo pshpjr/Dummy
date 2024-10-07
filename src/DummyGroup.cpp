@@ -6,9 +6,22 @@
 #include "Player.h"
 #include <CoreGlobal.h>
 
+using namespace std::chrono_literals;
+
+DummyGroup::DummyGroup()
+    : _dummyLogger()
+    , _ip(gData.ip), _port(gData.port)
+    , _maxPlayerCount(gData.playerPerGroup)
+    , _nextMonitor(std::chrono::steady_clock::now() + 1s)
+    , _useDB(gData.useDB)
+{
+
+    SetLoopMs(gPermil.loopMs);
+}
+
 void DummyGroup::OnCreate()
 {
-    g_AccountNo = (int(GetGroupID()) -1) * gData.playerPerGroup;
+    g_AccountNo = (long(GetGroupID()) -1) * gData.playerPerGroup;
 
    
     for (int i = 0; i < gData.playerPerGroup; i++)
@@ -20,7 +33,7 @@ void DummyGroup::OnCreate()
 void DummyGroup::OnUpdate(int milli)
 {
    
-    auto toConnect =  min(_maxPlayerCount - _players.size(),5);
+    auto toConnect = std::min(static_cast<unsigned long long>(_maxPlayerCount - _players.size()), 5ull);
     
     for(int i = 0; i< toConnect;i++)
     {
@@ -35,7 +48,7 @@ void DummyGroup::OnUpdate(int milli)
         auto id = newPlayer.Value();
         _iocp->MoveSession(id,GetGroupID());
         auto account = _accounts.top(); _accounts.pop();
-        _players.emplace(id, make_unique<Player>(id, account, _iocp,_dummyLogger));
+        _players.emplace(id, std::make_unique<Player>(id, account, _iocp,_dummyLogger));
     }
 
 
@@ -60,16 +73,16 @@ void DummyGroup::OnUpdate(int milli)
         }
     }
 
-    if (chrono::steady_clock::now() > _nextMonitor)
+    if (std::chrono::steady_clock::now() > _nextMonitor)
     {
         int delaySum = 0;
-        int delayMax = 0;
+        unsigned int delayMax = 0;
         for (auto& [_, player] : _players)
         {
 
             delaySum += player->_actionDelay;
 
-            delayMax = max(delayMax, player->_actionDelay);
+            delayMax = std::max(delayMax, player->_actionDelay);
             player->_actionDelay = 0;
         }
 

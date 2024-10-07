@@ -37,7 +37,7 @@ void Player::CheckPacket(psh::ePacketType type)
     ASSERT_CRASH(type == expect.at(data.type),L"RecvInvalidPacket");
     _packets.Dequeue();
 
-    _actionDelay += std::chrono::duration_cast<chrono::milliseconds>(std::chrono::steady_clock::now() - data.request).count();
+    _actionDelay += std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - data.request).count();
 }
 
 unsigned int Player::GetActionDelay()

@@ -1,6 +1,8 @@
 #pragma once
 #include <Types.h>
 #include <atomic>
+#include <SocketTypes.h>
+
 struct DummyPercent
 {
 	int loopMs;

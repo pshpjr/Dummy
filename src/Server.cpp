@@ -6,7 +6,14 @@
 
 Server::Server() : IOCP(false)
 {
-    dummyParser.Init(L"DummySetting.txt");
+    try
+    {
+        dummyParser.Init(L"DummySetting.txt");
+    }
+    catch (std::exception& e)
+    {
+        std::cout << e.what();
+    }
     gChatText = new TextFileReader(L"chatData.txt");
   
     dummyParser.GetValue(L"Base.IP", gData.ip);

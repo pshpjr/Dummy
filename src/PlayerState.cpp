@@ -215,12 +215,12 @@ PlayerState* GameState::HandlePacket(psh::ePacketType type, Player* player, CRec
         {
             psh::ObjectID objectId;
             bool isSpawn;
-            psh::eCharacterGroup group;
+            psh::eObjectType objType;
             char charType;
             psh::FVector loc;
             psh::FVector dir;
 
-            psh::GetGame_ResCreateActor(buffer, objectId,group,charType, loc, dir, isSpawn);
+            psh::GetGame_ResCreateActor(buffer, objectId, objType,charType, loc, dir, isSpawn);
 
             if (objectId == player->_me)
             {
@@ -234,7 +234,7 @@ PlayerState* GameState::HandlePacket(psh::ePacketType type, Player* player, CRec
             }
 
             else if (player->_target == -1 
-                && group == psh::eCharacterGroup::Monster
+                && objType == psh::eObjectType::Monster
                 && needAct(permil.target))
             {
                 player->_target = objectId;
@@ -315,8 +315,8 @@ PlayerState* GameState::HandlePacket(psh::ePacketType type, Player* player, CRec
             ASSERT_CRASH(player->_me != -1, L"NotCreated But RecvPacket");
             psh::FVector loc;
             psh::ObjectID id;
-            psh::eCharacterGroup group;
-            psh::GetGame_ResMove(buffer, id,group, loc);
+            psh::eObjectType objType;
+            psh::GetGame_ResMove(buffer, id,objType, loc);
             if(id == player->_me)
             {
                 player->CheckPacket(type);
@@ -429,7 +429,7 @@ PlayerState* LevelChangeState::HandlePacket(psh::ePacketType type, Player* playe
     {
         psh::ObjectID objectId;
         bool isSpawn;
-        psh::eCharacterGroup group;
+        psh::eObjectType group;
         char charType;
         psh::FVector loc;
         psh::FVector dir;
@@ -484,6 +484,7 @@ PlayerState* VillageState::HandlePacket(psh::ePacketType type, Player* player, C
     default:
         return GameState::HandlePacket(type,player,buffer);
     }
+    return this;
 }
 
 PlayerState* PveState::Update(Player* player, int time)
@@ -542,15 +543,15 @@ PlayerState* PveState::HandlePacket(psh::ePacketType type, Player* player, CRecv
         ASSERT_CRASH(player->_me != -1, L"NotCreated But RecvPacket");
         psh::FVector loc;
         psh::ObjectID id;
-        psh::eCharacterGroup group;
-        psh::GetGame_ResMove(buffer, id, group, loc);
+        psh::eObjectType objType;
+        psh::GetGame_ResMove(buffer, id, objType, loc);
 
         if (id == player->_me)
         {
             player->CheckPacket(type);
         }
         else if (player->_target == -1 
-            && group == psh::eCharacterGroup::Monster 
+            && objType == psh::eObjectType::Monster 
             && (loc - player->_spawnLocation).Size() <= 300)
         {
             player->_target = id;
@@ -623,8 +624,8 @@ PlayerState* PvpState::HandlePacket(psh::ePacketType type, Player* player, CRecv
         ASSERT_CRASH(player->_me != -1, L"NotCreated But RecvPacket");
         psh::FVector loc;
         psh::ObjectID id;
-        psh::eCharacterGroup group;
-        psh::GetGame_ResMove(buffer, id, group, loc);
+        psh::eObjectType objType;
+        psh::GetGame_ResMove(buffer, id, objType, loc);
         if (id == player->_me)
         {
             player->CheckPacket(type);
@@ -646,12 +647,12 @@ PlayerState* PvpState::HandlePacket(psh::ePacketType type, Player* player, CRecv
     {
         psh::ObjectID objectId;
         bool isSpawn;
-        psh::eCharacterGroup group;
+        psh::eObjectType objType;
         char charType;
         psh::FVector loc;
         psh::FVector dir;
 
-        psh::GetGame_ResCreateActor(buffer, objectId,group,charType, loc, dir, isSpawn);
+        psh::GetGame_ResCreateActor(buffer, objectId,objType,charType, loc, dir, isSpawn);
         if (player->_me == objectId)
         {
             player->_spawnLocation = loc;
@@ -661,7 +662,7 @@ PlayerState* PvpState::HandlePacket(psh::ePacketType type, Player* player, CRecv
         }
         else if (player->_target == -1
             && player->_me != objectId
-            && group != psh::eCharacterGroup::Item
+            && objType != psh::eObjectType::Item
             && needAct(permil.target))
         {
             player->_target = objectId;
