@@ -1,4 +1,7 @@
 #include "Server.h"
+
+#include <filesystem>
+
 #include "DummyData.h"
 
 #include "DummyGroup.h"
@@ -14,6 +17,7 @@ Server::Server() : IOCP(false)
     {
         std::cout << e.what();
     }
+
     gChatText = new TextFileReader(L"chatData.txt");
   
     dummyParser.GetValue(L"Base.IP", gData.ip);
@@ -32,7 +36,7 @@ Server::Server() : IOCP(false)
     dummyParser.GetValue(L"permil.setTarget", gPermil.target);
     dummyParser.GetValue(L"permil.toField", gPermil.toField);
     dummyParser.GetValue(L"permil.toVillage", gPermil.toVillage);
-    dummyParser.GetValueOrDefault(L"permil.chat", gPermil.chat, L"100");
+    dummyParser.GetValueOrDefault(L"permil.chat", gPermil.chat, L"25");
 
 }
 

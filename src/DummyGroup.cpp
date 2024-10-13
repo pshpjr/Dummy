@@ -4,13 +4,13 @@
 
 #include "IOCP.h"
 #include "Player.h"
+#include "PlayerState.h"
 #include <CoreGlobal.h>
 
 using namespace std::chrono_literals;
 
 DummyGroup::DummyGroup()
-    : _dummyLogger()
-    , _ip(gData.ip), _port(gData.port)
+    :  _ip(gData.ip), _port(gData.port)
     , _maxPlayerCount(gData.playerPerGroup)
     , _nextMonitor(std::chrono::steady_clock::now() + 1s)
     , _useDB(gData.useDB)

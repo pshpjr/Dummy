@@ -1,121 +1,137 @@
-﻿#pragma once
-#include <memory>
-#include <PacketGenerated.h>
+//
+// Created by pshpj on 24. 10. 11.
+//
+
+#ifndef PLAYERSTATE_REFECTOR_H
+#define PLAYERSTATE_REFECTOR_H
+
+
+#include "PacketGenerated.h"
+#include <unordered_map>
+#include <functional>
 
 #include "DummyData.h"
+#include "Player.h"
 #include "Rand.h"
 
-class CRecvBuffer;
-class Player;
+class PlayerRefector;
 
-enum StateType
+namespace psh
 {
-    other,
-    levelChange
-};
-
-template <typename T>
-class stateSingleton
-{
-public:
-    static T* Get()
+    enum StateType
     {
-        static std::unique_ptr<T> _instance = std::make_unique<T>();
-        return _instance.get();
-    }
-};
-    
-class PlayerState
-{
-public:
-    PlayerState() = default;
-    virtual ~PlayerState() = default;
-    virtual PlayerState* Update(Player* player, int time) { return this; }
-    virtual PlayerState* RecvPacket(Player* player,CRecvBuffer& buffer) {return this;}
-    PlayerState* Disconnect(Player* player);
+        other,
+        levelChange
+    };
 
-    virtual bool ValidDisconnect() { return false; }
-    StateType GetType() { return stateType; }
-    static bool needAct(int permil){return psh::RandomUtil::Rand(1,1000) <= permil;}
-    DummyPercent permil = gPermil;
-    StateType stateType = other;
-};
+    class PlayerState {
+    public:
+        virtual ~PlayerState() = default;
+        virtual PlayerState* Update(Player* player, int time) { return this; }
+        virtual PlayerState* RecvPacket(Player* player, CRecvBuffer& buffer);
+        virtual void Enter(PlayerRefector* player) {}
+        virtual void Exit(PlayerRefector* player) {}
+        virtual bool ValidDisconnect() { return false; }
+        void Disconnect(Player* player);
+        StateType GetType() const
+        {return _stateType;}
+    protected:
+        static bool NeedAct(int permil){return psh::RandomUtil::Rand(1,1000) <= permil;}
+        DummyPercent _permil = gPermil;
 
-class DisconnectState : public PlayerState, public stateSingleton<DisconnectState>
-{
-public:
-    PlayerState* Update(Player* player, int time) override;
-    PlayerState* RecvPacket(Player* player,CRecvBuffer& buffer) override;
-};
+        using PacketHandler = std::function<PlayerState*(Player*, CRecvBuffer&)>;
+        std::unordered_map<ePacketType, PacketHandler> _packetHandlers{};
+        StateType _stateType{other};
+    };
 
-class LoginLoginState : public PlayerState, public stateSingleton<LoginLoginState>
-{
-public:
-    PlayerState* Update(Player* player, int time) override;
-    PlayerState* RecvPacket(Player* player,CRecvBuffer& buffer) override;
-};
-    
-class GameLoginState final : public PlayerState, public stateSingleton<GameLoginState>
-{
-public:
-    PlayerState* Update(Player* player, int time) override;
-    PlayerState* RecvPacket(Player* player,CRecvBuffer& buffer) override;
-};
+    class DisconnectStateRefector : public PlayerState {
+    public:
+        static PlayerState* Get();
 
-class GameState : public PlayerState
-{
-public:
-    PlayerState* Update(Player* player, int time) override;
-    PlayerState* RecvPacket(Player* player, CRecvBuffer& buffer) final;
-protected:
-    virtual PlayerState* HandlePacket(psh::ePacketType type,Player* player,CRecvBuffer& buffer);
-};
+        PlayerState* Update(Player* player, int time) override;
 
-class LevelChangeState final : public GameState, public stateSingleton<LevelChangeState>
-{
-public:
-    LevelChangeState()
-    {
-        stateType = levelChange;
-    }
-    PlayerState* Update(Player* player, int time) override {return this;}
+    private:
+        DisconnectStateRefector() = default;
 
-protected:
-    PlayerState* HandlePacket(psh::ePacketType type, Player* player, CRecvBuffer& buffer) override;
-};
+    };
 
-class VillageState : public GameState, public stateSingleton<VillageState>
-{
-public:
-    PlayerState* Update(Player* player, int time) override;
-protected:
-    PlayerState* HandlePacket(psh::ePacketType type, Player* player, CRecvBuffer& buffer) override;
-};
+    class LoginLoginStateRefector : public PlayerState {
+    public:
+        static PlayerState* Get();
 
-class PveState : public GameState, public stateSingleton<PveState>
-{
-    
-public:
-    PlayerState* Update(Player* player, int time) override;
-    PlayerState* HandlePacket(psh::ePacketType type, Player* player, CRecvBuffer& buffer) override;
-};
+        PlayerState* Update(Player* player, int time) override;
 
-class PvpState : public GameState, public stateSingleton<PvpState>
-{
-public:
-    PlayerState* Update(Player* player, int time) override;
-    PlayerState* HandlePacket(psh::ePacketType type, Player* player, CRecvBuffer& buffer) override;
-};
+    private:
+        LoginLoginStateRefector();
+    };
 
-class IdleState;
-class HuntState;
+    class GameLoginStateRefector : public PlayerState {
+    public:
+        static PlayerState* Get();
 
-class DisconnectWaitState : public GameState, public stateSingleton<DisconnectWaitState>
-{
-public:
-    DisconnectWaitState() = default;
-    ~DisconnectWaitState() override = default;
-    bool ValidDisconnect() override { return true; }
-    PlayerState* HandlePacket(psh::ePacketType type, Player* player, CRecvBuffer& buffer) override;
-};
+        PlayerState* Update(Player* player, int time) override;
 
+    private:
+        GameLoginStateRefector();
+    };
+
+    class GameStateRefector : public PlayerState {
+    public:
+        PlayerState* Update(Player* player, int time) override;
+
+        GameStateRefector();
+    };
+
+    class LevelChangeStateRefector : public GameStateRefector {
+    public:
+        static PlayerState* Get();
+
+        PlayerState* Update(Player* player, int time) override;
+
+    private:
+        LevelChangeStateRefector();
+
+    };
+
+    class VillageStateRefector : public GameStateRefector {
+    public:
+        static PlayerState* Get();
+
+        PlayerState* Update(Player* player, int time) override;
+
+    private:
+        VillageStateRefector();
+    };
+
+    class PveStateRefector : public GameStateRefector {
+    public:
+        static PlayerState* Get();
+
+        PlayerState* Update(Player* player, int time) override;
+
+    private:
+        PveStateRefector();
+    };
+
+    class PvpStateRefector : public GameStateRefector {
+    public:
+        static PlayerState* Get();
+
+        PlayerState* Update(Player* player, int time) override;
+
+    private:
+        PvpStateRefector();
+    };
+
+    class DisconnectWaitStateRefector : public GameStateRefector {
+    public:
+        static PlayerState* Get();
+
+        PlayerState* Update(Player* player, int time) override;
+        bool ValidDisconnect() override { return true; }
+    private:
+        DisconnectWaitStateRefector();
+    };
+}
+
+#endif //PLAYERSTATE_REFECTOR_H
