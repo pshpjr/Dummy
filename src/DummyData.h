@@ -7,8 +7,7 @@ struct DummyPercent
 {
 	int loopMs;
 	int move;
-	int toField;
-	int toVillage;
+	int fieldChange;
 	int moveRange;
 	int moveOffset;
 	int disconnect;

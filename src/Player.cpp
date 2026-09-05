@@ -25,6 +25,7 @@ Player::Player(SessionID id, psh::AccountNo accountNo, IOCP* server, CLogger& lo
       _state{psh::DisconnectStateRefector::Get()},
       _logger(logger) {}
 
+
 void Player::Update(int milli)
 {
     if (_moveDelay > 0) {
@@ -66,15 +67,20 @@ void Player::CalculateLocation()
     }
 }
 
-void Player::SetTarget(psh::ObjectID id, psh::FVector location)
+void Player::SetTarget(psh::ObjectID id, psh::FVector location, int range)
 {
     _target = id;
     auto dir = (location - _location).Normalize();
-
-    //가까운 곳
-    if(Distance(_location, location) <=35)
+    float dist = Distance(_location, location);
+    if(dist > range * 2)
     {
-        if(!(isnan(dir.X) || isnan(dir.Y)))
+        _target = -1;
+        return;
+    }
+    //가까운 곳
+    if(dist <=35)
+    {
+        if(!(std::isnan(dir.X) || std::isnan(dir.Y)))
         {
             _attackDir = dir;
         }
@@ -82,6 +88,7 @@ void Player::SetTarget(psh::ObjectID id, psh::FVector location)
         Stop(_location);
         return;
     }
+
 
     //멀리 있으면 위치로
     auto moveDst = location - (dir*35);

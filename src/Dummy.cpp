@@ -8,7 +8,7 @@ int main()
 
     auto server = std::make_unique<Server>();
 
-    server->ClientInit(4, 4, 50,true,false,false);
+    server->ClientInit(8, 8, 50,true,true,false);
     server->Start();
     server->Wait();
 }

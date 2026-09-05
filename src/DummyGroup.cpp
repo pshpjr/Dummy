@@ -9,13 +9,13 @@
 
 using namespace std::chrono_literals;
 
-DummyGroup::DummyGroup()
+DummyGroup::DummyGroup(Server::dummyMonitor& monitor)
     :  _ip(gData.ip), _port(gData.port)
     , _maxPlayerCount(gData.playerPerGroup)
     , _nextMonitor(std::chrono::steady_clock::now() + 1s)
     , _useDB(gData.useDB)
+, _monitor(monitor)
 {
-
     SetLoopMs(gPermil.loopMs);
 }
 
@@ -23,7 +23,7 @@ void DummyGroup::OnCreate()
 {
     g_AccountNo = (long(GetGroupID()) -1) * gData.playerPerGroup;
 
-   
+   psh::RandomUtil::SRand(long(time(nullptr)));
     for (int i = 0; i < gData.playerPerGroup; i++)
     {
         _accounts.push(g_AccountNo + i+ gData.startAccount);
@@ -32,11 +32,13 @@ void DummyGroup::OnCreate()
 
 void DummyGroup::OnUpdate(int milli)
 {
-   
+
     auto toConnect = std::min(static_cast<unsigned long long>(_maxPlayerCount - _players.size()), 5ull);
-    
+    int connectionFailed = 0;
+
     for(int i = 0; i< toConnect;i++)
     {
+        ++connectionFailed;
         auto newPlayer = _iocp->GetClientSession(_ip,_port);
         if (newPlayer.HasError())
         {
@@ -49,6 +51,12 @@ void DummyGroup::OnUpdate(int milli)
         _iocp->MoveSession(id,GetGroupID());
         auto account = _accounts.top(); _accounts.pop();
         _players.emplace(id, std::make_unique<Player>(id, account, _iocp,_dummyLogger));
+    }
+
+    if(connectionFailed == _maxPlayerCount)
+    {
+        gLogger->Write(L"Server Down", CLogger::LogLevel::Invalid, L"MayBe");
+        __debugbreak();
     }
 
 
@@ -79,14 +87,23 @@ void DummyGroup::OnUpdate(int milli)
         unsigned int delayMax = 0;
         for (auto& [_, player] : _players)
         {
+            auto delay = player->GetActionDelay();
+            delaySum += delay;
 
-            delaySum += player->_actionDelay;
-
-            delayMax = std::max(delayMax, player->_actionDelay);
-            player->_actionDelay = 0;
+            delayMax = std::max(delayMax, delay);
         }
 
-        int delayAvg = delaySum / _players.size();
+        _monitor.players = _players.size();
+        if(_players.size() == 0)
+        {
+            _monitor.delay = 0;
+            _monitor.maxDelay = 0;
+        }
+        else
+        {
+            _monitor.delay = delaySum / _players.size();
+            _monitor.maxDelay = delayMax;
+        }
 
         _nextMonitor += 1s;
     }

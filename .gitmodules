@@ -1,0 +1,4 @@
+[submodule "src/common"]
+	path = src/common
+	url = https://github.com/pshpjr/GameServer-CommonDatas.git
+	branch = main

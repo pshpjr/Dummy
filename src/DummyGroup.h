@@ -6,13 +6,14 @@
 #include "SettingParser.h"
 #include "ContentTypes.h"
 #include "DummyData.h"
+#include "Server.h"
 class Player;
 
 class DummyGroup : public Group
 {
 public:
 
-    DummyGroup();
+    DummyGroup(Server::dummyMonitor& monitor);
     
     void OnCreate() override;
     void OnUpdate(int milli) override;
@@ -35,4 +36,5 @@ private:
     bool _useDB;
 
     std::queue<std::pair<std::chrono::steady_clock::time_point,SessionID>> _deleteWait;
+    Server::dummyMonitor& _monitor;
 };

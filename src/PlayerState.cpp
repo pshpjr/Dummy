@@ -58,8 +58,16 @@ psh::LoginLoginStateRefector::LoginLoginStateRefector() {
             AccountNo accountNo;
             GetLogin_ResLogin(buffer, accountNo, id, result, player->_key);
 
+
+            if(result != psh::eLoginResult::LoginSuccess)
+            {
+                player->_logger.Write(L"Dummy Disconnect",CLogger::LogLevel::Debug,L"LoginFail LoginResult: %d",result);
+                player->Disconnect();
+
+                return DisconnectWaitStateRefector::Get();
+            }
+            ASSERT_CRASH(result == psh::eLoginResult::LoginSuccess,"");
             ASSERT_CRASH(id == player->_id, "Login Result ID Wrong");
-            ASSERT_CRASH(result == psh::eLoginResult::LoginSuccess, "Login Failed");
             ASSERT_CRASH(accountNo == player->_accountNo, "Invalid AccountNo");
 
             player->CheckPacket(eLogin_ResLogin);
@@ -171,14 +179,22 @@ psh::PlayerState* psh::GameStateRefector::Update(Player* player, int time)
             player->Move(dest, Player::randomMove);
         }
     }
+   else if(NeedAct(_permil.fieldChange))
+    {
+        auto max = static_cast<int>(ServerType::End)-1;
+        auto target = static_cast<ServerType>(RandomUtil::Rand(0, max));
+        player->ReqLevelChange(target);
+        player->_target = -1;
+        return LevelChangeStateRefector::Get();
+    }
+    else if (NeedAct(_permil.chat))
+    {
+        player->Chat();
+    }
     else if (NeedAct(_permil.disconnect))
     {
         player->Disconnect();
         return DisconnectWaitStateRefector::Get();
-    }
-    if (NeedAct(_permil.chat))
-    {
-        player->Chat();
     }
 
     return this;
@@ -215,7 +231,8 @@ psh::GameStateRefector::GameStateRefector()
             && objType == eObjectType::Monster
             && NeedAct(_permil.target))
         {
-            player->SetTarget(objectId,loc);
+
+            player->SetTarget(objectId,loc, _permil.moveOffset);
         }
         return this;
     };
@@ -280,7 +297,7 @@ psh::GameStateRefector::GameStateRefector()
         }
         else if(id == player->_target)
         {
-           player->SetTarget(id,loc);
+           player->SetTarget(id,loc, _permil.moveOffset);
         }
         return this;
     };
@@ -296,7 +313,7 @@ psh::GameStateRefector::GameStateRefector()
         }
         else if (id == player->_target)
         {
-            player->SetTarget(id,loc);
+            player->SetTarget(id,loc, _permil.moveOffset);
         }
         return this;
     };
@@ -329,7 +346,6 @@ psh::GameStateRefector::GameStateRefector()
 
                 return DisconnectWaitStateRefector::Get();
             }
-
         }
         return this;
     };
@@ -467,7 +483,7 @@ psh::PlayerState* psh::VillageStateRefector::Get()
 
 psh::PlayerState* psh::VillageStateRefector::Update(Player* player, int time)
 {
-    if(NeedAct(_permil.toField))
+    if(NeedAct(_permil.fieldChange))
     {
         auto max = static_cast<int>(ServerType::End)-1;
         auto target = static_cast<ServerType>(RandomUtil::Rand(1, max));
@@ -502,14 +518,6 @@ psh::PlayerState* psh::PveStateRefector::Get()
 
 psh::PlayerState* psh::PveStateRefector::Update(Player* player, int time)
 {
-    if(NeedAct(_permil.toVillage))
-    {
-        auto target = static_cast<ServerType>(0);
-        player->ReqLevelChange(target);
-        player->_target = -1;
-        return LevelChangeStateRefector::Get();
-    }
-
     return GameStateRefector::Update(player, time);
 }
 
@@ -530,11 +538,11 @@ psh::PveStateRefector::PveStateRefector()
             && objType == eObjectType::Monster
             && (loc - player->_spawnLocation).Size() <= 300)
         {
-            player->SetTarget(id,loc);
+            player->SetTarget(id,loc, _permil.moveOffset);
         }
         else if (id == player->_target)
         {
-            player->SetTarget(id,loc);
+            player->SetTarget(id,loc, _permil.moveOffset);
         }
         return this;
     };
@@ -548,14 +556,6 @@ psh::PlayerState* psh::PvpStateRefector::Get()
 
 psh::PlayerState* psh::PvpStateRefector::Update(Player* player, int time)
 {
-    if (NeedAct(_permil.toVillage))
-    {
-        auto target = static_cast<ServerType>(0);
-        player->ReqLevelChange(target);
-        player->_target = -1;
-        return LevelChangeStateRefector::Get();
-    }
-
     return GameStateRefector::Update(player, time);
 }
 
@@ -575,11 +575,11 @@ psh::PvpStateRefector::PvpStateRefector()
         else if (player->_target == -1
             && (loc - player->_spawnLocation).Size() <= 300)
         {
-            player->SetTarget(id,loc);
+            player->SetTarget(id,loc, _permil.moveOffset);
         }
         else if (id == player->_target)
         {
-            player->SetTarget(id,loc);
+            player->SetTarget(id,loc, _permil.moveOffset);
         }
         return this;
     };

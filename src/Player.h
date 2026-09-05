@@ -43,7 +43,7 @@ public:
     void LevelChangeComp();
     void Chat();
     void CalculateLocation();
-    void SetTarget(psh::ObjectID id, psh::FVector location);
+    void SetTarget(psh::ObjectID id, psh::FVector location, int range);
     void UpdateLocation(int time);
     void Update(int milli);
     void Disconnect();
@@ -58,6 +58,10 @@ public:
         auto now = std::chrono::steady_clock::now();
         auto result = _packets.Enqueue({type,now,_me,opt,opt2,opt3,opt4});
 
+        if(result == false)
+        {
+            __debugbreak();
+        }
 
         ASSERT_CRASH(result, "");
     }
@@ -66,7 +70,7 @@ public:
     struct packet
     {
         psh::ePacketType type;
-        std::chrono::steady_clock::time_point request;
+        std::chrono::steady_clock::time_point request{};
         psh::ObjectID obj = -1;
         int opt = -1;
         int opt2 = -1;
