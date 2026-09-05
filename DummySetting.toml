@@ -1,0 +1,18 @@
+[Base]
+IP = "192.168.1.3"
+Port = 50001
+useDB = 0
+startAccount = 0
+maxPlayer = 100
+playerPerGroup = 50
+reconnectTime = 3000
+
+[permil]
+loopMs = 100
+move = 400
+moveRange = 6400
+moveOffset = 300
+setTarget = 1000
+toField = 21
+toVillage = 0
+disconnect = 5
