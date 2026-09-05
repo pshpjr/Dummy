@@ -28,7 +28,7 @@ namespace psh
     public:
         virtual ~PlayerState() = default;
         virtual PlayerState* Update(Player* player, int time) { return this; }
-        virtual PlayerState* RecvPacket(Player* player, CRecvBuffer& buffer);
+        virtual PlayerState* RecvPacket(Player* player, RecvBuffer& buffer);
         virtual void Enter(PlayerRefector* player) {}
         virtual void Exit(PlayerRefector* player) {}
         virtual bool ValidDisconnect() { return false; }
@@ -39,7 +39,7 @@ namespace psh
         static bool NeedAct(int permil){return psh::RandomUtil::Rand(1,1000) <= permil;}
         DummyPercent _permil = gPermil;
 
-        using PacketHandler = std::function<PlayerState*(Player*, CRecvBuffer&)>;
+        using PacketHandler = std::function<PlayerState*(Player*, RecvBuffer&)>;
         std::unordered_map<ePacketType, PacketHandler> _packetHandlers{};
         StateType _stateType{other};
     };

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <ContentTypes.h>
 #include <PacketGenerated.h>
 
@@ -12,7 +12,7 @@ namespace psh {
     class PlayerState;
 }
 
-class CLogger; class IOCP; class DummyGroup;
+class Logger; class IOCP; class DummyGroup;
 class Player
 {
     static constexpr float SPEED_PER_MS = 200 / 1000.0f;
@@ -33,7 +33,7 @@ public:
         randomMove
     };
 
-    Player(SessionID id,psh::AccountNo accountNo, IOCP* server, CLogger& logger);
+    Player(SessionID id,psh::AccountNo accountNo, IOCP* server, Logger& logger);
     void CheckPacket(psh::ePacketType type);
     unsigned int GetActionDelay();
 
@@ -48,7 +48,7 @@ public:
     void Update(int milli);
     void Disconnect();
     void Attack(char type);
-    void RecvPacket(CRecvBuffer& buffer);
+    void RecvPacket(RecvBuffer& buffer);
     psh::PlayerState* State() const { return _state; }
     void Stop(psh::FVector newLocation);
     void Move(psh::FVector destination, moveReason reason = None);
@@ -136,7 +136,7 @@ public:
     psh::PlayerState* _state;
 
     // 로깅
-    CLogger& _logger;
+    Logger& _logger;
 };
 
 

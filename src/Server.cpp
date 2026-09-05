@@ -8,13 +8,13 @@
 #include "MonitorProtocol.h"
 #include "TextFileReader.h"
 
-#include "externalHeader/iniReader.h"
+
 
 Server::Server() : IOCP(false)
 {
     try
     {
-        dummyParser.Init(L"DummySetting.txt");
+        dummyParser.Init(L"DummySetting.toml");
     }
     catch (std::exception& e)
     {
@@ -41,13 +41,13 @@ Server::Server() : IOCP(false)
     dummyParser.GetValueOrDefault(L"permil.chat", gPermil.chat, L"25");
 
     dummyParser.GetValue(L"monitor.useMonitor", _useMonitor);
-    dummyParser.GetValue(L"monitor.ip", _monitorServerIP);
-    dummyParser.GetValue(L"monitor.port", _monitorServerPort);
 
     if (!_useMonitor)
     {
         return;
     }
+    dummyParser.GetValue(L"monitor.ip", _monitorServerIP);
+    dummyParser.GetValue(L"monitor.port", _monitorServerPort);
 }
 
 
@@ -82,7 +82,7 @@ void Server::OnStart()
     }
 }
 
-void Server::OnRecvPacket(SessionID sessionId, CRecvBuffer& buffer)
+void Server::OnRecvPacket(SessionID sessionId, RecvBuffer& buffer)
 {
     DebugBreak();
 }

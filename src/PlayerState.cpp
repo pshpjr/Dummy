@@ -4,10 +4,10 @@
 
 #include "PlayerState.h"
 #include "Player.h"
-#include <CLogger.h>
+#include <Logger.h>
 
 
-psh::PlayerState* psh::PlayerState::RecvPacket(Player* player, CRecvBuffer& buffer)
+psh::PlayerState* psh::PlayerState::RecvPacket(Player* player, RecvBuffer& buffer)
 {
     ePacketType type;
     buffer >> type;
@@ -51,7 +51,7 @@ psh::PlayerState* psh::LoginLoginStateRefector::Update(Player* player, int time)
 psh::LoginLoginStateRefector::LoginLoginStateRefector() {
     // 패킷 핸들러 등록
     _packetHandlers[eLogin_ResLogin] =
-        [this](Player* player, CRecvBuffer& buffer) -> PlayerState* {
+        [this](Player* player, RecvBuffer& buffer) -> PlayerState* {
             // 패킷 처리 로직
             eLoginResult result;
             ID id;
@@ -61,7 +61,7 @@ psh::LoginLoginStateRefector::LoginLoginStateRefector() {
 
             if(result != psh::eLoginResult::LoginSuccess)
             {
-                player->_logger.Write(L"Dummy Disconnect",CLogger::LogLevel::Debug,L"LoginFail LoginResult: %d",result);
+                player->_logger.Write(L"Dummy Disconnect",Logger::LogLevel::Debug,L"LoginFail LoginResult: %d",static_cast<int>(result));
                 player->Disconnect();
 
                 return DisconnectWaitStateRefector::Get();
@@ -93,7 +93,7 @@ psh::PlayerState* psh::GameLoginStateRefector::Update(Player* player, int time)
 psh::GameLoginStateRefector::GameLoginStateRefector()
 {
     _packetHandlers[eGame_ResLogin] =
-        [this](Player* player, CRecvBuffer& buffer) -> PlayerState* {
+        [this](Player* player, RecvBuffer& buffer) -> PlayerState* {
             AccountNo accountNo;
             bool result;
             GetGame_ResLogin(buffer,accountNo, result);
@@ -103,7 +103,7 @@ psh::GameLoginStateRefector::GameLoginStateRefector()
             return this;
     };
 
-    _packetHandlers[eGame_ResLevelEnter] = [this](Player* player, CRecvBuffer& buffer) -> PlayerState* {
+    _packetHandlers[eGame_ResLevelEnter] = [this](Player* player, RecvBuffer& buffer) -> PlayerState* {
         AccountNo accountNo;
         ObjectID myId;
         ServerType server;
@@ -202,13 +202,13 @@ psh::PlayerState* psh::GameStateRefector::Update(Player* player, int time)
 
 psh::GameStateRefector::GameStateRefector()
 {
-    _packetHandlers[eGame_ResLevelEnter] = [this](Player* player, CRecvBuffer& buffer) -> PlayerState*
+    _packetHandlers[eGame_ResLevelEnter] = [this](Player* player, RecvBuffer& buffer) -> PlayerState*
     {
         ASSERT_CRASH(false,"Invaid Level Change");
         return this;
     };
 
-    _packetHandlers[eGame_ResCreateActor] = [this](Player* player, CRecvBuffer& buffer) -> PlayerState* {
+    _packetHandlers[eGame_ResCreateActor] = [this](Player* player, RecvBuffer& buffer) -> PlayerState* {
         ObjectID objectId;
         bool isSpawn;
         eObjectType objType;
@@ -237,7 +237,7 @@ psh::GameStateRefector::GameStateRefector()
         return this;
     };
 
-    _packetHandlers[eGame_ResChracterDetail] = [this](Player* player, CRecvBuffer& buffer) -> PlayerState* {
+    _packetHandlers[eGame_ResChracterDetail] = [this](Player* player, RecvBuffer& buffer) -> PlayerState* {
         ObjectID objectId;
         int hp;
         GetGame_ResChracterDetail(buffer,objectId,hp);
@@ -248,14 +248,14 @@ psh::GameStateRefector::GameStateRefector()
         return this;
     };
 
-    _packetHandlers[eGame_ResPlayerDetail] = [this](Player* player, CRecvBuffer& buffer) -> PlayerState* {
+    _packetHandlers[eGame_ResPlayerDetail] = [this](Player* player, RecvBuffer& buffer) -> PlayerState* {
         ObjectID objectId;
         Nickname nick;
         GetGame_ResPlayerDetail(buffer, objectId, nick);
         return this;
     };
 
-    _packetHandlers[eGame_ResDestroyActor] = [this](Player* player, CRecvBuffer& buffer) -> PlayerState* {
+    _packetHandlers[eGame_ResDestroyActor] = [this](Player* player, RecvBuffer& buffer) -> PlayerState* {
         ObjectID objectId;
         bool isDead;
         char cause;
@@ -264,7 +264,7 @@ psh::GameStateRefector::GameStateRefector()
         {
             if(player->_hp > 0)
             {
-                player->_logger.Write(L"DummyDisconnect",CLogger::LogLevel::Error,L"Invalid Destroy HP > 0, AccountNo : %d, hp : %d",player->_accountNo,player->_hp);
+                player->_logger.Write(L"DummyDisconnect",Logger::LogLevel::Error,L"Invalid Destroy HP > 0, AccountNo : %d, hp : %d",player->_accountNo,player->_hp);
             }
             player->Disconnect();
 
@@ -277,7 +277,7 @@ psh::GameStateRefector::GameStateRefector()
         return this;
     };
 
-    _packetHandlers[eGame_ResGetCoin] = [this](Player* player, CRecvBuffer& buffer) -> PlayerState* {
+    _packetHandlers[eGame_ResGetCoin] = [this](Player* player, RecvBuffer& buffer) -> PlayerState* {
         ObjectID objectId;
         uint8 value;
         GetGame_ResGetCoin(buffer, objectId, value);
@@ -286,7 +286,7 @@ psh::GameStateRefector::GameStateRefector()
         return this;
     };
 
-    _packetHandlers[eGame_ResMoveStop] = [this](Player* player, CRecvBuffer& buffer) -> PlayerState* {
+    _packetHandlers[eGame_ResMoveStop] = [this](Player* player, RecvBuffer& buffer) -> PlayerState* {
         FVector loc;
         ObjectID id;
         GetGame_ResMoveStop(buffer, id, loc);
@@ -302,7 +302,7 @@ psh::GameStateRefector::GameStateRefector()
         return this;
     };
 
-    _packetHandlers[eGame_ResMove] = [this](Player* player, CRecvBuffer& buffer) -> PlayerState* {
+    _packetHandlers[eGame_ResMove] = [this](Player* player, RecvBuffer& buffer) -> PlayerState* {
         FVector loc;
         ObjectID id;
         eObjectType objType;
@@ -318,7 +318,7 @@ psh::GameStateRefector::GameStateRefector()
         return this;
     };
 
-    _packetHandlers[eGame_ResAttack] = [this](Player* player, CRecvBuffer& buffer) -> PlayerState* {
+    _packetHandlers[eGame_ResAttack] = [this](Player* player, RecvBuffer& buffer) -> PlayerState* {
         ObjectID attacker;
         char attackType;
 
@@ -331,7 +331,7 @@ psh::GameStateRefector::GameStateRefector()
         return this;
     };
 
-    _packetHandlers[eGame_ResHit] = [this](Player* player, CRecvBuffer& buffer) -> PlayerState* {
+    _packetHandlers[eGame_ResHit] = [this](Player* player, RecvBuffer& buffer) -> PlayerState* {
         ObjectID victim;
         ObjectID attacker;
         int hp;
@@ -350,7 +350,7 @@ psh::GameStateRefector::GameStateRefector()
         return this;
     };
 
-    _packetHandlers[eGame_ResChat] = [this](Player* player, CRecvBuffer& buffer) -> PlayerState* {
+    _packetHandlers[eGame_ResChat] = [this](Player* player, RecvBuffer& buffer) -> PlayerState* {
         ObjectID target;
         String chat;
         GetGame_ResChat(buffer, target,chat);
@@ -373,7 +373,7 @@ psh::PlayerState* psh::LevelChangeStateRefector::Update(Player* player, int time
 psh::LevelChangeStateRefector::LevelChangeStateRefector()
     : GameStateRefector{}
 {
-    _packetHandlers[eGame_ResLevelEnter] = [this](Player* player, CRecvBuffer& buffer) -> PlayerState* {
+    _packetHandlers[eGame_ResLevelEnter] = [this](Player* player, RecvBuffer& buffer) -> PlayerState* {
         AccountNo accountNo;
         ServerType server;
         ObjectID myID;
@@ -410,7 +410,7 @@ psh::LevelChangeStateRefector::LevelChangeStateRefector()
         _stateType = levelChange;
     };
 
-    _packetHandlers[eGame_ResCreateActor] = [this](Player* player, CRecvBuffer& buffer) -> PlayerState* {
+    _packetHandlers[eGame_ResCreateActor] = [this](Player* player, RecvBuffer& buffer) -> PlayerState* {
         ObjectID objectId;
         bool isSpawn;
         eObjectType group;
@@ -422,7 +422,7 @@ psh::LevelChangeStateRefector::LevelChangeStateRefector()
         return this;
     };
 
-    _packetHandlers[eGame_ResDestroyActor] = [this](Player* player, CRecvBuffer& buffer) -> PlayerState* {
+    _packetHandlers[eGame_ResDestroyActor] = [this](Player* player, RecvBuffer& buffer) -> PlayerState* {
         ObjectID objectId;
         bool isDead;
         char cause;
@@ -430,7 +430,7 @@ psh::LevelChangeStateRefector::LevelChangeStateRefector()
         return this;
     };
 
-    _packetHandlers[eGame_ResMoveStop] = [this](Player* player, CRecvBuffer& buffer) -> PlayerState* {
+    _packetHandlers[eGame_ResMoveStop] = [this](Player* player, RecvBuffer& buffer) -> PlayerState* {
         ASSERT_CRASH(player->_me != -1, L"NotCreated But RecvPacket");
         FVector loc;
         ObjectID id;
@@ -439,14 +439,14 @@ psh::LevelChangeStateRefector::LevelChangeStateRefector()
     };
 
 
-    _packetHandlers[eGame_ResMoveStop] = [this](Player* player, CRecvBuffer& buffer) -> PlayerState* {
+    _packetHandlers[eGame_ResMoveStop] = [this](Player* player, RecvBuffer& buffer) -> PlayerState* {
         FVector loc;
         ObjectID id;
         GetGame_ResMoveStop(buffer, id, loc);
         return this;
     };
 
-    _packetHandlers[eGame_ResMove] = [this](Player* player, CRecvBuffer& buffer) -> PlayerState* {
+    _packetHandlers[eGame_ResMove] = [this](Player* player, RecvBuffer& buffer) -> PlayerState* {
         ASSERT_CRASH(player->_me != -1, L"NotCreated But RecvPacket");
         FVector loc;
         ObjectID id;
@@ -459,7 +459,7 @@ psh::LevelChangeStateRefector::LevelChangeStateRefector()
         return this;
     };
 
-    _packetHandlers[eGame_ResAttack] = [this](Player* player, CRecvBuffer& buffer) -> PlayerState* {
+    _packetHandlers[eGame_ResAttack] = [this](Player* player, RecvBuffer& buffer) -> PlayerState* {
         ObjectID attacker;
         char attackType;
 
@@ -497,13 +497,13 @@ psh::PlayerState* psh::VillageStateRefector::Update(Player* player, int time)
 psh::VillageStateRefector::VillageStateRefector()
     : GameStateRefector{}
 {
-    _packetHandlers[eGame_ResAttack] = [this](Player* player, CRecvBuffer& buffer) -> PlayerState* {
+    _packetHandlers[eGame_ResAttack] = [this](Player* player, RecvBuffer& buffer) -> PlayerState* {
         ASSERT_CRASH(player->_me != -1, L"NotCreated But RecvPacket");
         ASSERT_CRASH(false, L"Village Cannot Attack");
         return this;
     };
 
-    _packetHandlers[eGame_ResHit] = [this](Player* player, CRecvBuffer& buffer) -> PlayerState* {
+    _packetHandlers[eGame_ResHit] = [this](Player* player, RecvBuffer& buffer) -> PlayerState* {
         ASSERT_CRASH(player->_me != -1, L"NotCreated But RecvPacket");
         ASSERT_CRASH(false, L"Village Cannot hit");
         return this;
@@ -524,7 +524,7 @@ psh::PlayerState* psh::PveStateRefector::Update(Player* player, int time)
 psh::PveStateRefector::PveStateRefector()
     : GameStateRefector{}
 {
-    _packetHandlers[eGame_ResMove] = [this](Player* player, CRecvBuffer& buffer) -> PlayerState* {
+    _packetHandlers[eGame_ResMove] = [this](Player* player, RecvBuffer& buffer) -> PlayerState* {
         FVector loc;
         ObjectID id;
         eObjectType objType;
@@ -562,7 +562,7 @@ psh::PlayerState* psh::PvpStateRefector::Update(Player* player, int time)
 psh::PvpStateRefector::PvpStateRefector()
     : GameStateRefector{}
 {
-    _packetHandlers[eGame_ResMove] = [this](Player* player, CRecvBuffer& buffer) -> PlayerState* {
+    _packetHandlers[eGame_ResMove] = [this](Player* player, RecvBuffer& buffer) -> PlayerState* {
         FVector loc;
         ObjectID id;
         eObjectType objType;
@@ -599,7 +599,7 @@ psh::PlayerState* psh::DisconnectWaitStateRefector::Update(Player* player, int t
 psh::DisconnectWaitStateRefector::DisconnectWaitStateRefector()
     : GameStateRefector{}
 {
-    _packetHandlers[eGame_ResLevelEnter] = [this](Player* player, CRecvBuffer& buffer) -> PlayerState* {
+    _packetHandlers[eGame_ResLevelEnter] = [this](Player* player, RecvBuffer& buffer) -> PlayerState* {
         AccountNo accountNo;
         ObjectID myId;
         ServerType server;

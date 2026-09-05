@@ -1,7 +1,7 @@
-﻿#pragma once
+#pragma once
 #include <chrono>
 
-#include "CLogger.h"
+#include "Logger.h"
 #include "Group.h"
 #include "SettingParser.h"
 #include "ContentTypes.h"
@@ -19,12 +19,12 @@ public:
     void OnUpdate(int milli) override;
     void OnEnter(SessionID id) override;
     void OnLeave(SessionID id, int wsaErrCode) override;
-    void OnRecv(SessionID id, CRecvBuffer& recvBuffer) override;
+    void OnRecv(SessionID id, RecvBuffer& recvBuffer) override;
     void DeleteActor(SessionID id);
 private:
     std::stack<psh::AccountNo> _accounts;
     psh::AccountNo g_AccountNo = 0;
-    CLogger _dummyLogger;
+    Logger _dummyLogger;
     String _ip;
     Port _port;
     int _maxPlayerCount;

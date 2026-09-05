@@ -1,4 +1,4 @@
-﻿#include "Player.h"
+#include "Player.h"
 #include "SendBuffer.h"
 #include "PacketGenerated.h"
 #include "PlayerState.h"
@@ -15,7 +15,7 @@ static const HashMap<psh::ePacketType,psh::ePacketType> expect =
     {psh::eGame_ReqAttack,psh::ePacketType::eGame_ResAttack}
 };
 
-Player::Player(SessionID id, psh::AccountNo accountNo, IOCP* server, CLogger& logger)
+Player::Player(SessionID id, psh::AccountNo accountNo, IOCP* server, Logger& logger)
     : _accountNo(accountNo),
       _containGroup(psh::ServerType::End),
       _id(std::format(L"ID_{:d}", accountNo)),
@@ -213,7 +213,7 @@ void Player::Attack(char type)
     _server->SendPacket(_sessionId, attack);
 }
 
-void Player::RecvPacket(CRecvBuffer& buffer)
+void Player::RecvPacket(RecvBuffer& buffer)
 {
     while (buffer.CanPopSize() > 0)
     {

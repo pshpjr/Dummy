@@ -16,3 +16,8 @@ setTarget = 1000
 toField = 21
 toVillage = 0
 disconnect = 5
+fieldChange = 21
+chat = 25
+
+[monitor]
+useMonitor = false

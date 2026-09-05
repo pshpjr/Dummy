@@ -19,7 +19,7 @@ public:
     void SendMonitorData(en_PACKET_SS_MONITOR_DATA_UPDATE_TYPE type, int value);
 
     void OnStart() override;
-    void OnRecvPacket(SessionID sessionId, CRecvBuffer& buffer) override;
+    void OnRecvPacket(SessionID sessionId, RecvBuffer& buffer) override;
     void OnMonitorRun() override;
 private:
     SettingParser dummyParser;

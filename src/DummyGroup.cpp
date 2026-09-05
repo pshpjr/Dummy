@@ -1,4 +1,4 @@
-﻿#include "DummyGroup.h"
+#include "DummyGroup.h"
 
 #include <codecvt>
 
@@ -42,7 +42,7 @@ void DummyGroup::OnUpdate(int milli)
         auto newPlayer = _iocp->GetClientSession(_ip,_port);
         if (newPlayer.HasError())
         {
-            gLogger->Write(L"Connection fail", CLogger::LogLevel::Invalid, L"Err when Connect Errcode : %d", newPlayer.Error());
+            gLogger->Write(L"Connection fail", Logger::LogLevel::Invalid, L"Err when Connect Errcode : %d", newPlayer.Error());
             return;
         }
 
@@ -55,7 +55,7 @@ void DummyGroup::OnUpdate(int milli)
 
     if(connectionFailed == _maxPlayerCount)
     {
-        gLogger->Write(L"Server Down", CLogger::LogLevel::Invalid, L"MayBe");
+        gLogger->Write(L"Server Down", Logger::LogLevel::Invalid, L"MayBe");
         __debugbreak();
     }
 
@@ -124,14 +124,14 @@ void DummyGroup::OnLeave(SessionID id, int wsaErrCode)
         std::string cState = typeid(*player->State()).name();
         String wState = String(cState.begin(),cState.end());
         //String toPrint = std::format(L"InvalidDisconnect.  state : {}",typeid(player->State()).name());
-        _dummyLogger.Write(L"DummyDisconnect",CLogger::LogLevel::Error
+        _dummyLogger.Write(L"DummyDisconnect",Logger::LogLevel::Error
             ,L"InvalidDisconnect AccountNO : %lld, state : %s, WSAError : %d",player->_accountNo,wState.c_str(), wsaErrCode);
     }
 
     _deleteWait.emplace(std::chrono::steady_clock::now() + std::chrono::milliseconds(gData.reconnect), player->_sessionId);
 }
 
-void DummyGroup::OnRecv(SessionID id, CRecvBuffer& recvBuffer)
+void DummyGroup::OnRecv(SessionID id, RecvBuffer& recvBuffer)
 {
     auto player = _players.find(id);
 
