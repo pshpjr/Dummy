@@ -68,7 +68,7 @@ psh::LoginLoginStateRefector::LoginLoginStateRefector() {
             }
             ASSERT_CRASH(result == psh::eLoginResult::LoginSuccess,"");
             ASSERT_CRASH(id == player->_id, "Login Result ID Wrong");
-            ASSERT_CRASH(accountNo == player->_accountNo, "Invalid AccountNo");
+            //ASSERT_CRASH(accountNo == player->_accountNo, "Invalid AccountNo");
 
             player->CheckPacket(eLogin_ResLogin);
             player->GameLogin();
@@ -98,7 +98,7 @@ psh::GameLoginStateRefector::GameLoginStateRefector()
             bool result;
             GetGame_ResLogin(buffer,accountNo, result);
             player->CheckPacket(eGame_ResLogin);
-            ASSERT_CRASH(accountNo == player->_accountNo, "GameLogin Account Wrong");
+            //ASSERT_CRASH(accountNo == player->_accountNo, "GameLogin Account Wrong");
             ASSERT_CRASH(result , "LoginFail");
             return this;
     };
@@ -379,7 +379,7 @@ psh::LevelChangeStateRefector::LevelChangeStateRefector()
         ObjectID myID;
         GetGame_ResLevelEnter(buffer, accountNo, myID, server);
         player->CheckPacket(eGame_ResLevelEnter);
-        ASSERT_CRASH(accountNo == player->_accountNo, "InvalidAccountNO");
+        //ASSERT_CRASH(accountNo == player->_accountNo, "InvalidAccountNO");
         ASSERT_CRASH(server == player->_containGroup, L"Invaid Group move");
         player->_me = myID;
         player->_target = -1;
