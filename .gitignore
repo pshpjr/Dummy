@@ -369,3 +369,8 @@ include
 lib
 /cmake-build-debug/
 /cmake-build-release/
+
+!CMakeLists.txt
+!chatData.txt
+/out/
+/build/

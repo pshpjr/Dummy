@@ -1,0 +1,2 @@
+Hello from Dummy.
+Local game server test.
