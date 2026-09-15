@@ -10,7 +10,7 @@
 
 
 
-Server::Server() : IOCP(false)
+Server::Server() : IOCP()
 {
     try
     {
