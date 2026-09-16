@@ -2,8 +2,11 @@
 //
 
 #include "Server.h"
+#include "BuildVersion.h"
+#include "CrashDump.h"
 int main()
 {
+    CrashDump::SetBuildInfo(BuildVersion::Metadata);
     std::locale::global(std::locale("ko_KR.UTF-8"));
 
     auto server = std::make_unique<Server>();
