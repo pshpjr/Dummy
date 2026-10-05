@@ -1,3 +1,4 @@
+#include "Macro.h"
 #pragma once
 #include <ContentTypes.h>
 #include <PacketGenerated.h>
@@ -60,7 +61,7 @@ public:
 
         if(result == false)
         {
-            __debugbreak();
+            psh::util::DebugBreak();
         }
 
         ASSERT_CRASH(result, "");

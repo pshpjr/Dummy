@@ -5,12 +5,12 @@
 #include "Types.h"
 
 // 섹터 50 x 50
-enum en_Server_TYPE : BYTE
+enum en_Server_TYPE : psh::uint8
 {
     en_SERVER_MONITOR, en_SERVER_CHAT, en_SERVER_LOGIN, en_SERVER_GAME,
 };
 
-enum en_PACKET_TYPE : WORD
+enum en_PACKET_TYPE : psh::uint16
 {
     ////////////////////////////////////////////////////////
     //
@@ -111,7 +111,7 @@ enum en_PACKET_TYPE : WORD
     en_PACKET_CS_MONITOR_TOOL_DATA_UPDATE,
 };
 
-enum en_PACKET_SS_MONITOR_DATA_UPDATE_TYPE : BYTE
+enum en_PACKET_SS_MONITOR_DATA_UPDATE_TYPE : psh::uint8
 {
     dfMONITOR_DATA_TYPE_MONITOR_CPU_TOTAL, // 서버컴퓨터 CPU 전체 사용률
     dfMONITOR_DATA_TYPE_MONITOR_NONPAGED_MEMORY, // 서버컴퓨터 논페이지 메모리 MByte

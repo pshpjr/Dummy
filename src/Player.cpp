@@ -98,7 +98,7 @@ void Player::SetTarget(psh::ObjectID id, psh::FVector location, int range)
 void Player::Move(psh::FVector destination, moveReason reason)
 {
     if (_state->GetType() == psh::StateType::levelChange)
-        __debugbreak();
+        psh::util::DebugBreak();
 
     CalculateLocation();
 

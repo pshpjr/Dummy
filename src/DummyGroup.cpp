@@ -42,7 +42,7 @@ void DummyGroup::OnUpdate(int milli)
         auto newPlayer = _iocp->GetClientSession(_ip,_port);
         if (newPlayer.HasError())
         {
-            gLogger->Write(L"Connection fail", Logger::LogLevel::Invalid, L"Err when Connect Errcode : %d", newPlayer.Error());
+            gLogger->Write(L"Connection fail", Logger::LogLevel::Invalid, L"Err when Connect Errcode : %d", newPlayer.Error().GetNativeCode());
             return;
         }
 
@@ -56,7 +56,7 @@ void DummyGroup::OnUpdate(int milli)
     if(connectionFailed == _maxPlayerCount)
     {
         gLogger->Write(L"Server Down", Logger::LogLevel::Invalid, L"MayBe");
-        __debugbreak();
+        psh::util::DebugBreak();
     }
 
 

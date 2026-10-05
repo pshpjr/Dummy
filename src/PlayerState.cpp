@@ -155,7 +155,7 @@ psh::PlayerState* psh::GameStateRefector::Update(Player* player, int time)
         auto minSkill = player->_templateID*3;
         if(minSkill<0)
         {
-            __debugbreak();
+            psh::util::DebugBreak();
         }
         player->Attack(RandomUtil::Rand(minSkill,minSkill+2));
         player->_attackCooldown += 3000;

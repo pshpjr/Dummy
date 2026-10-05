@@ -55,7 +55,7 @@ Server::Server() : IOCP()
 void Server::SendLogin()
 {
     auto buffer = SendBuffer::Alloc();
-    buffer << en_PACKET_SS_MONITOR_LOGIN << static_cast<WORD>(1) << static_cast<char>(
+    buffer << en_PACKET_SS_MONITOR_LOGIN << static_cast<psh::uint16>(1) << static_cast<char>(
         static_cast<long>(0));
     SendPacket(_monitorSession, buffer);
 }
@@ -64,7 +64,7 @@ void Server::SendLogin()
 void Server::SendMonitorData(const en_PACKET_SS_MONITOR_DATA_UPDATE_TYPE type, const int value)
 {
     auto buffer = SendBuffer::Alloc();
-    buffer << en_PACKET_SS_MONITOR_DATA_UPDATE << static_cast<WORD>(1) << static_cast<
+    buffer << en_PACKET_SS_MONITOR_DATA_UPDATE << static_cast<psh::uint16>(1) << static_cast<
         char>(0) << type << value << static_cast<int>(time(nullptr));
     SendPacket(_monitorSession, buffer);
 }

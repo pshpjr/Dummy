@@ -8,7 +8,7 @@ add_executable(Dummy
     "${CMAKE_CURRENT_SOURCE_DIR}/../src/Common/FVector.cpp"
 )
 
-target_compile_features(Dummy PRIVATE cxx_std_20)
+target_compile_features(Dummy PRIVATE cxx_std_23)
 target_compile_definitions(Dummy PRIVATE PSH_CLIENT UNICODE _UNICODE)
 target_include_directories(Dummy PRIVATE src "${CMAKE_CURRENT_SOURCE_DIR}/../src/Common")
 target_link_libraries(Dummy PRIVATE NetLib)
