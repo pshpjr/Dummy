@@ -1,3 +1,5 @@
+#pragma once
+
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -9,7 +11,7 @@ class TextFileReader {
 public:
     // 생성자: 파일명을 받아서 파일을 읽고 내부 벡터에 저장
     TextFileReader(const String& filename) {
-        std::wifstream file(filename);
+        std::wifstream file(psh::util::WToS(filename));
         file.imbue(std::locale("ko_KR.UTF-8"));
         if (!file.is_open()) {
             throw std::runtime_error("Could not open file");

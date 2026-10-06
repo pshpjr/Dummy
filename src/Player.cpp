@@ -176,7 +176,7 @@ void Player::ReqLevelChange(psh::ServerType type)
     auto reqLevelChange = SendBuffer::Alloc();
     psh::MakeGame_ReqLevelEnter(reqLevelChange,_accountNo,type);
     if (type == psh::ServerType::End)
-        DebugBreak();
+        psh::util::DebugBreak();
 
     _containGroup = type;
 

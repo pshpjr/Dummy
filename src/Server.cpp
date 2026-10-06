@@ -84,7 +84,7 @@ void Server::OnStart()
 
 void Server::OnRecvPacket(SessionID sessionId, RecvBuffer& buffer)
 {
-    DebugBreak();
+    psh::util::DebugBreak();
 }
 
 void Server::OnMonitorRun()
