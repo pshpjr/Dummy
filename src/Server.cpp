@@ -93,7 +93,12 @@ void Server::OnMonitorRun()
         return;
     if (_monitorSession == InvalidSessionID())
     {
-        auto client = GetClientSession(_monitorServerIP, _monitorServerPort);
+        const auto ip = Ip::Parse(_monitorServerIP);
+        if (!ip.has_value())
+        {
+            return;
+        }
+        auto client = GetClientSession(*ip, _monitorServerPort);
         if (client.HasError())
         {
             return;

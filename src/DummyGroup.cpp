@@ -33,13 +33,19 @@ void DummyGroup::OnCreate()
 void DummyGroup::OnUpdate(int milli)
 {
 
+    const auto ip = Ip::Parse(_ip);
+    if (!ip.has_value())
+    {
+        return;
+    }
+
     auto toConnect = std::min(static_cast<unsigned long long>(_maxPlayerCount - _players.size()), 5ull);
     int connectionFailed = 0;
 
     for(int i = 0; i< toConnect;i++)
     {
         ++connectionFailed;
-        auto newPlayer = _iocp->GetClientSession(_ip,_port);
+        auto newPlayer = _iocp->GetClientSession(*ip,_port);
         if (newPlayer.HasError())
         {
             gLogger->Write(L"Connection fail", Logger::LogLevel::Invalid, L"Err when Connect Errcode : %d", newPlayer.Error().GetNativeCode());
