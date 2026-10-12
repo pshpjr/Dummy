@@ -4,14 +4,18 @@
 #include "Server.h"
 #include "BuildVersion.h"
 #include "CrashDump.h"
+#include "ExceptionTrace.h"
 int main()
 {
-    CrashDump::SetBuildInfo(BuildVersion::Metadata);
-    std::locale::global(std::locale("ko_KR.UTF-8"));
+    psh::util::RunWithTrace("Dummy main", []
+    {
+        CrashDump::SetBuildInfo(BuildVersion::Metadata);
+        std::locale::global(std::locale("ko_KR.UTF-8"));
 
-    auto server = std::make_unique<Server>();
+        auto server = std::make_unique<Server>();
 
-    server->ClientInit(8, 8, 50,true,true,false);
-    server->Start();
-    server->Wait();
+        server->ClientInit(8, 8, 50,true,true,false);
+        server->Start();
+        server->Wait();
+    });
 }

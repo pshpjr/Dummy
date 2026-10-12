@@ -3,11 +3,14 @@ IP = "127.0.0.1"
 Port = 11333
 useDB = false
 startAccount = 0
-maxPlayer = 100
-playerPerGroup = 50
+# 혼합 동작 부하를 위해 접속 목표를 5,000명으로 늘립니다.
+# 250명씩 20개 그룹을 생성하며, 실제 접속 수는 재접속과 처리 속도에 따라 달라집니다.
+maxPlayer = 5000
+playerPerGroup = 250
 reconnectTime = 3000
 
 [permil]
+# 이동·전투·채팅·필드 이동·재접속을 섞습니다. 실제 PPS는 서버 RecvTPS로 확인합니다.
 loopMs = 100
 move = 400
 moveRange = 6400
