@@ -5,6 +5,10 @@
 #include "BuildVersion.h"
 #include "CrashDump.h"
 #include "ExceptionTrace.h"
+#include "CloseSignalHandler.h"
+#include "Console.h"
+
+#include <atomic>
 int main()
 {
     psh::util::RunWithTrace("Dummy main", []
@@ -12,10 +16,19 @@ int main()
         CrashDump::SetBuildInfo(BuildVersion::Metadata);
         std::locale::global(std::locale("ko_KR.UTF-8"));
 
-        auto server = std::make_unique<Server>();
+        std::atomic<Server*> signalServer{nullptr};
+        std::unique_ptr<Server> server;
+        psh::util::CloseSignalListener listener([&]
+        {
+            if (auto* target = signalServer.load())
+                target->Stop();
+        });
+        server = std::make_unique<Server>();
+        signalServer.store(server.get());
 
         server->ClientInit(8, 8, 50,true,true,false);
         server->Start();
+        psh::util::println(u"start");
         server->Wait();
     });
 }
