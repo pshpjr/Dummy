@@ -1,6 +1,7 @@
 #include "DummyGroup.h"
 
-#include <codecvt>
+#include <algorithm>
+#include <iostream>
 
 #include "IOCP.h"
 #include "Player.h"
@@ -32,59 +33,43 @@ void DummyGroup::OnCreate()
 
 void DummyGroup::OnUpdate(int milli)
 {
-
-    const auto ip = Ip::Parse(_ip);
-    if (!ip.has_value())
+    const auto now = std::chrono::steady_clock::now();
+    // Never let failed connects prevent reclamation of disconnected players/accounts.
+    CleanupDisconnected(now);
+    if (static_cast<Server*>(_iocp)->ServerDown())
     {
+        EnterServerDown();
         return;
     }
+    const auto ip = Ip::Parse(_ip);
+    if (!ip.has_value()) return;
 
-    auto toConnect = std::min(static_cast<unsigned long long>(_maxPlayerCount - _players.size()), 5ull);
-    int connectionFailed = 0;
-
-    for(int i = 0; i< toConnect;i++)
+    if (now >= _nextConnectAttempt)
     {
-        ++connectionFailed;
-        auto newPlayer = _iocp->GetClientSession(*ip,_port);
-        if (newPlayer.HasError())
+        const auto toConnect = std::min(_maxPlayerCount - static_cast<int>(_players.size()), 5);
+        for (int i = 0; i < toConnect && !_accounts.empty(); ++i)
         {
-            gLogger->Write(L"Connection fail", Logger::LogLevel::Invalid, L"Err when Connect Errcode : %d", newPlayer.Error().GetNativeCode());
-            return;
+            auto connection = _iocp->GetClientSession(*ip, _port);
+            if (connection.HasError())
+            {
+                if (connection.Error() == NetErrc::ConnectionRefused)
+                {
+                    EnterServerDown();
+                    return;
+                }
+                // Other failures do not establish ServerDown or settle pending resets.
+                gLogger->Write(L"Connection fail", Logger::LogLevel::Invalid,
+                               L"Err when Connect Errcode : %d", connection.Error().GetNativeCode());
+                _nextConnectAttempt = now + std::chrono::milliseconds(std::max(gData.reconnect, 1000));
+                break;
+            }
+            RegisterPlayer(connection.Value());
         }
-
-
-        auto id = newPlayer.Value();
-        _iocp->MoveSession(id,GetGroupID());
-        auto account = _accounts.top(); _accounts.pop();
-        _players.emplace(id, std::make_unique<Player>(id, account, _iocp,_dummyLogger));
     }
 
-    if(connectionFailed == _maxPlayerCount)
+    for (auto& [id, player] : _players)
     {
-        gLogger->Write(L"Server Down", Logger::LogLevel::Invalid, L"MayBe");
-        psh::util::DebugBreak();
-    }
-
-
-    for (auto& [_, player] : _players)
-    {
-
-        player->Update(milli);
-    }
-
-    auto now = std::chrono::steady_clock::now();
-    while (!_deleteWait.empty())
-    {
-        auto& front = _deleteWait.front();
-        if (front.first <= now)
-        {
-            DeleteActor(front.second);
-            _deleteWait.pop();
-        }
-        else
-        {
-            break;
-        }
+        if (!_disconnectedSessions.contains(id)) player->Update(milli);
     }
 
     if (std::chrono::steady_clock::now() > _nextMonitor)
@@ -93,21 +78,22 @@ void DummyGroup::OnUpdate(int milli)
         unsigned int delayMax = 0;
         for (auto& [_, player] : _players)
         {
+            if (_disconnectedSessions.contains(_)) continue;
             auto delay = player->GetActionDelay();
             delaySum += delay;
 
             delayMax = std::max(delayMax, delay);
         }
 
-        _monitor.players = _players.size();
-        if(_players.size() == 0)
+        _monitor.players = static_cast<int>(_players.size() - _disconnectedSessions.size());
+        if (_monitor.players == 0)
         {
             _monitor.delay = 0;
             _monitor.maxDelay = 0;
         }
         else
         {
-            _monitor.delay = delaySum / _players.size();
+            _monitor.delay = delaySum / _monitor.players;
             _monitor.maxDelay = delayMax;
         }
 
@@ -123,32 +109,109 @@ void DummyGroup::OnEnter(SessionID id)
 
 void DummyGroup::OnLeave(SessionID id, int wsaErrCode)
 {
-    auto it = _players.find(id);
-    auto player = it->second.get();
-    if(!player->State()->ValidDisconnect())
+    const auto it = _players.find(id);
+    if (it == _players.end() || !_disconnectedSessions.insert(id).second) return;
+    const auto& player = it->second;
+    if (static_cast<Server*>(_iocp)->ServerDown())
     {
-        std::string cState = typeid(*player->State()).name();
-        String wState = String(cState.begin(),cState.end());
-        //String toPrint = std::format(L"InvalidDisconnect.  state : {}",typeid(player->State()).name());
-        _dummyLogger.Write(L"DummyDisconnect",Logger::LogLevel::Error
-            ,L"InvalidDisconnect AccountNO : %lld, state : %s, WSAError : %d",player->_accountNo,wState.c_str(), wsaErrCode);
+        EnterServerDown();
+        ++_serverStopDisconnects;
     }
-
-    _deleteWait.emplace(std::chrono::steady_clock::now() + std::chrono::milliseconds(gData.reconnect), player->_sessionId);
+    else if (!player->State()->ValidDisconnect())
+    {
+        const std::string state = typeid(*player->State()).name();
+        PendingDisconnect disconnect{player->_accountNo, String(state.begin(), state.end()), wsaErrCode};
+        if (NetError::FromNativeCode(wsaErrCode) == NetErrc::ConnectionReset)
+            _pendingDisconnects.insert_or_assign(player->_accountNo, std::move(disconnect));
+        else
+            RecordInvalid(disconnect);
+    }
+    _monitor.pendingDisconnects = _pendingDisconnects.size();
+    _monitor.serverStopDisconnects = _serverStopDisconnects;
+    _deleteWait.emplace(std::chrono::steady_clock::now() + std::chrono::milliseconds(gData.reconnect), id);
 }
 
 void DummyGroup::OnRecv(SessionID id, RecvBuffer& recvBuffer)
 {
-    auto player = _players.find(id);
-
+    const auto player = _players.find(id);
+    if (static_cast<Server*>(_iocp)->ServerDown() || player == _players.end() || _disconnectedSessions.contains(id))
+    {
+        // Consume queued traffic without advancing gameplay or response measurements.
+        while (recvBuffer.CanPopSize() > 0)
+        {
+            psh::uint8 ignored;
+            recvBuffer >> ignored;
+        }
+        return;
+    }
     player->second->RecvPacket(recvBuffer);
     ASSERT_CRASH(recvBuffer.CanPopSize() == 0, "can pop from recv buffer");
 }
 
 void DummyGroup::DeleteActor(SessionID id)
 {
-    auto it = _players.find(id);
-    auto player = it->second.get();
-    _accounts.push(player->_accountNo);
+    const auto it = _players.find(id);
+    if (it == _players.end()) return;
+    _accounts.push(it->second->_accountNo);
     _players.erase(it);
+    _disconnectedSessions.erase(id);
+}
+
+void DummyGroup::CleanupDisconnected(std::chrono::steady_clock::time_point now)
+{
+    while (!_deleteWait.empty() && _deleteWait.front().first <= now)
+    {
+        DeleteActor(_deleteWait.front().second);
+        _deleteWait.pop();
+    }
+}
+
+void DummyGroup::RegisterPlayer(SessionID id)
+{
+    const auto account = _accounts.top();
+    _accounts.pop();
+    if (const auto pending = _pendingDisconnects.find(account); pending != _pendingDisconnects.end())
+    {
+        RecordInvalid(pending->second);
+        _pendingDisconnects.erase(pending);
+        _monitor.pendingDisconnects = _pendingDisconnects.size();
+    }
+    _players.emplace(id, std::make_unique<Player>(id, account, _iocp, _dummyLogger));
+    _iocp->MoveSession(id, GetGroupID());
+}
+
+void DummyGroup::RecordInvalid(const PendingDisconnect& disconnect)
+{
+    ++_invalidDisconnects;
+    _dummyLogger.Write(L"DummyDisconnect", Logger::LogLevel::Error,
+                       L"InvalidDisconnect AccountNO : %lld, state : %s, WSAError : %d",
+                       disconnect.account, disconnect.state.c_str(), disconnect.error);
+    PrintDisconnectSummary("InvalidDisconnect");
+}
+
+void DummyGroup::EnterServerDown()
+{
+    if (!_serverDown)
+    {
+        _serverDown = true;
+        _serverStopDisconnects += _pendingDisconnects.size();
+        _pendingDisconnects.clear();
+        _monitor.players = 0;
+        _monitor.delay = 0;
+        _monitor.maxDelay = 0;
+        PrintDisconnectSummary("ServerDown");
+    }
+    // Stop the entire dummy once, including other groups; no recovery/probe loop.
+    static_cast<Server*>(_iocp)->StopForServerDown();
+}
+
+void DummyGroup::PrintDisconnectSummary(const char* event) const
+{
+    _monitor.invalidDisconnects = _invalidDisconnects;
+    _monitor.serverStopDisconnects = _serverStopDisconnects;
+    _monitor.pendingDisconnects = _pendingDisconnects.size();
+    std::cout << "[DummyGroup] group=" << static_cast<long>(GetGroupID())
+              << " event=" << event << " invalid=" << _invalidDisconnects
+              << " server_stop=" << _serverStopDisconnects
+              << " pending=" << _pendingDisconnects.size() << std::endl;
 }

@@ -77,6 +77,7 @@ void Server::OnStart()
 
     for (int i = 0; i < groups; ++i)
     {
+        if (ServerDown()) break;
         CreateGroup<DummyGroup>(_dummyMonitors[i]);
         std::this_thread::sleep_for(std::chrono::milliseconds(3000));
     }
@@ -125,4 +126,34 @@ void Server::OnMonitorRun()
 
     SendMonitorData(dfMONITOR_DATA_TYPE_GAME_DUMMY_DELAY_AVG,avg );
     SendMonitorData(dfMONITOR_DATA_TYPE_GAME_DUMMY_DELAY_MAX, max);
+}
+
+void Server::StopForServerDown()
+{
+    if (!_serverDown.exchange(true, std::memory_order_acq_rel))
+    {
+        std::cout << "[Dummy] event=ServerDown action=stop" << std::endl;
+        Stop();
+    }
+}
+
+void Server::OnEnd()
+{
+    // All worker threads have joined. Any remaining unresolved resets belong to
+    // the confirmed server-down interval and must not become Invalid on teardown.
+    unsigned long long invalid = 0, serverStop = 0, pending = 0;
+    for (const auto& monitor : _dummyMonitors)
+    {
+        invalid += monitor.invalidDisconnects;
+        serverStop += monitor.serverStopDisconnects;
+        pending += monitor.pendingDisconnects;
+    }
+    if (ServerDown())
+    {
+        serverStop += pending;
+        pending = 0;
+    }
+    std::cout << "[Dummy] event=" << (ServerDown() ? "ServerStop" : "Stopped")
+              << " invalid=" << invalid << " server_stop=" << serverStop
+              << " pending=" << pending << std::endl;
 }
