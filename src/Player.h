@@ -36,8 +36,9 @@ public:
     };
 
     Player(SessionID id,psh::AccountNo accountNo, IOCP* server, Logger& logger);
+    //  응답을 받지 못한 요청을 대기 수에서 뺀다.
+    ~Player();
     void CheckPacket(psh::ePacketType type);
-    unsigned int GetActionDelay();
 
     void LoginLogin();
     void GameLogin();
@@ -55,18 +56,8 @@ public:
     void Stop(psh::FVector newLocation);
     void Move(psh::FVector destination, moveReason reason = None);
 
-    void Req(psh::ePacketType type,int opt = -1,int opt2 = -1,int opt3 = -1,int opt4 = -1)
-    {
-        auto now = psh::SteadyClock::Now();
-        auto result = _packets.Enqueue({type,now,_me,opt,opt2,opt3,opt4});
-
-        if(result == false)
-        {
-            psh::util::DebugBreak();
-        }
-
-        ASSERT_CRASH(result, "");
-    }
+    //  응답을 기다릴 요청을 기록한다. 보낸 수와 대기 수 메트릭도 여기서 센다.
+    void Req(psh::ePacketType type,int opt = -1,int opt2 = -1,int opt3 = -1,int opt4 = -1);
 
     // 디버깅 정보
     struct packet
@@ -79,7 +70,6 @@ public:
         int opt3 = -1;
         int opt4 = -1;
     };
-    unsigned int _actionDelay = 0;
     SingleThreadCircularQ<packet, 32> _packets;
 
     //이동 디버깅

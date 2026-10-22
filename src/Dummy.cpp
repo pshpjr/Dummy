@@ -7,8 +7,10 @@
 #include "ExceptionTrace.h"
 #include "CloseSignalHandler.h"
 #include "Console.h"
+#include "Metrics.h"
 
 #include <atomic>
+#include <iostream>
 int main()
 {
     psh::util::RunWithTrace("Dummy main", []
@@ -26,9 +28,13 @@ int main()
         server = std::make_unique<Server>();
         signalServer.store(server.get());
 
+        if (auto result = psh::metrics::Init(psh::metrics::ConfigFromEnv("dummy")); !result)
+            std::cerr << "metrics disabled: " << result.Error() << std::endl;
+
         server->ClientInit(8, 8, 50,true,true,false);
         server->Start();
         psh::util::println(u"start");
         server->Wait();
+        psh::metrics::Shutdown();
     });
 }

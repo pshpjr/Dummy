@@ -13,7 +13,6 @@ using namespace std::chrono_literals;
 DummyGroup::DummyGroup(Server::dummyMonitor& monitor)
     :  _ip(gData.ip), _port(gData.port)
     , _maxPlayerCount(gData.playerPerGroup)
-    , _nextMonitor(psh::SteadyClock::Now() + 1s)
     , _useDB(gData.useDB)
 , _monitor(monitor)
 {
@@ -72,33 +71,6 @@ void DummyGroup::OnUpdate(int milli)
         if (!_disconnectedSessions.contains(id)) player->Update(milli);
     }
 
-    if (psh::SteadyClock::Now() > _nextMonitor)
-    {
-        int delaySum = 0;
-        unsigned int delayMax = 0;
-        for (auto& [_, player] : _players)
-        {
-            if (_disconnectedSessions.contains(_)) continue;
-            auto delay = player->GetActionDelay();
-            delaySum += delay;
-
-            delayMax = std::max(delayMax, delay);
-        }
-
-        _monitor.players = static_cast<int>(_players.size() - _disconnectedSessions.size());
-        if (_monitor.players == 0)
-        {
-            _monitor.delay = 0;
-            _monitor.maxDelay = 0;
-        }
-        else
-        {
-            _monitor.delay = delaySum / _monitor.players;
-            _monitor.maxDelay = delayMax;
-        }
-
-        _nextMonitor += 1s;
-    }
 
 }
 
@@ -196,9 +168,6 @@ void DummyGroup::EnterServerDown()
         _serverDown = true;
         _serverStopDisconnects += _pendingDisconnects.size();
         _pendingDisconnects.clear();
-        _monitor.players = 0;
-        _monitor.delay = 0;
-        _monitor.maxDelay = 0;
         PrintDisconnectSummary("ServerDown");
     }
     // Stop the entire dummy once, including other groups; no recovery/probe loop.

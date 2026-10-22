@@ -1,4 +1,5 @@
 #include "Player.h"
+#include "Metrics.h"
 #include "SendBuffer.h"
 #include "PacketGenerated.h"
 #include "PlayerState.h"
@@ -130,6 +131,74 @@ void Player::Move(psh::FVector destination, moveReason reason)
     _server->SendPacket(_sessionId,moveBuffer);
 }
 
+namespace
+{
+    //  요청 종류마다 시리즈가 하나고, 모든 더미가 같이 쓴다.
+    struct RequestMetrics
+    {
+        //  요청부터 응답까지 걸린 시간
+        psh::metrics::Histogram delay;
+        psh::metrics::Counter sent;
+        //  보냈지만 아직 응답을 받지 못한 요청 수
+        psh::metrics::Gauge pending;
+    };
+
+    const RequestMetrics& GetRequestMetrics(const psh::ePacketType request)
+    {
+        static const auto metrics = []
+        {
+            using psh::metrics::Registry;
+            HashMap<psh::ePacketType, RequestMetrics> result;
+            const std::pair<psh::ePacketType, const char*> types[] = {
+                {psh::eLogin_ReqLogin, "login"},
+                {psh::eLogin_ReqRegister, "register"},
+                {psh::eGame_ReqLogin, "game_login"},
+                {psh::eGame_ReqLevelEnter, "level_enter"},
+                {psh::eGame_ReqMove, "move"},
+                {psh::eGame_ReqAttack, "attack"},
+            };
+            for (const auto& [type, name] : types)
+            {
+                const psh::metrics::Attributes attributes{{"type", name}};
+                result.emplace(type, RequestMetrics{
+                    Registry::CreateTimeHistogram("dummy.action.delay", "time from request to its response", attributes),
+                    Registry::CreateCounter("dummy.requests", "sent requests that expect a response", attributes),
+                    Registry::CreateGauge("dummy.requests.pending", "requests waiting for a response", attributes),
+                });
+            }
+            return result;
+        }();
+        return metrics.at(request);
+    }
+}
+
+Player::~Player()
+{
+    packet data;
+    while (_packets.Peek(data))
+    {
+        GetRequestMetrics(data.type).pending.Add(-1);
+        _packets.Dequeue();
+    }
+}
+
+void Player::Req(psh::ePacketType type, int opt, int opt2, int opt3, int opt4)
+{
+    auto now = psh::SteadyClock::Now();
+    auto result = _packets.Enqueue({type,now,_me,opt,opt2,opt3,opt4});
+
+    if(result == false)
+    {
+        psh::util::DebugBreak();
+    }
+
+    ASSERT_CRASH(result, "");
+
+    const auto& metrics = GetRequestMetrics(type);
+    metrics.sent.Add();
+    metrics.pending.Add(1);
+}
+
 void Player::CheckPacket(psh::ePacketType type)
 {
     packet data;
@@ -139,14 +208,10 @@ void Player::CheckPacket(psh::ePacketType type)
     ASSERT_CRASH(type == expect.at(data.type),L"RecvInvalidPacket");
     _packets.Dequeue();
 
-    _actionDelay += psh::SteadyClock::ElapsedMs(data.request);
-}
-
-unsigned int Player::GetActionDelay()
-{
-    unsigned int delay = _actionDelay;
-    _actionDelay = 0;
-    return delay;
+    const auto& metrics = GetRequestMetrics(data.type);
+    metrics.pending.Add(-1);
+    metrics.delay.Record(
+        psh::SteadyClock::ElapsedUs(data.request));
 }
 
 

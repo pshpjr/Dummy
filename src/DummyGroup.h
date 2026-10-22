@@ -45,7 +45,6 @@ private:
     SettingParser _dummySettings;
     
     HashMap<SessionID,std::unique_ptr<Player>> _players;
-    psh::SteadyClock::TimePoint _nextMonitor;
     bool _useDB;
 
     std::queue<std::pair<psh::SteadyClock::TimePoint,SessionID>> _deleteWait;

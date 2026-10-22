@@ -9,9 +9,6 @@ class Server :
 public:
     struct dummyMonitor
     {
-        int players;
-        int delay;
-        int maxDelay;
         unsigned long long invalidDisconnects = 0;
         unsigned long long serverStopDisconnects = 0;
         unsigned long long pendingDisconnects = 0;
