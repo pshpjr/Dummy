@@ -5,7 +5,6 @@
 #include "DummyData.h"
 
 #include "DummyGroup.h"
-#include "MonitorProtocol.h"
 #include "TextFileReader.h"
 
 
@@ -40,34 +39,8 @@ Server::Server() : IOCP()
     dummyParser.GetValue(L"permil.fieldChange", gPermil.fieldChange);
     dummyParser.GetValueOrDefault(L"permil.chat", gPermil.chat, L"25");
 
-    dummyParser.GetValue(L"monitor.useMonitor", _useMonitor);
-
-    if (!_useMonitor)
-    {
-        return;
-    }
-    dummyParser.GetValue(L"monitor.ip", _monitorServerIP);
-    dummyParser.GetValue(L"monitor.port", _monitorServerPort);
 }
 
-
-// 모니터 로그인 전송
-void Server::SendLogin()
-{
-    auto buffer = SendBuffer::Alloc();
-    buffer << en_PACKET_SS_MONITOR_LOGIN << static_cast<psh::uint16>(1) << static_cast<char>(
-        static_cast<long>(0));
-    SendPacket(_monitorSession, buffer);
-}
-
-// 모니터링 데이터 전송
-void Server::SendMonitorData(const en_PACKET_SS_MONITOR_DATA_UPDATE_TYPE type, const int value)
-{
-    auto buffer = SendBuffer::Alloc();
-    buffer << en_PACKET_SS_MONITOR_DATA_UPDATE << static_cast<psh::uint16>(1) << static_cast<
-        char>(0) << type << value << static_cast<int>(time(nullptr));
-    SendPacket(_monitorSession, buffer);
-}
 
 void Server::OnStart()
 {
@@ -86,46 +59,6 @@ void Server::OnStart()
 void Server::OnRecvPacket(SessionID sessionId, RecvBuffer& buffer)
 {
     psh::util::DebugBreak();
-}
-
-void Server::OnMonitorRun()
-{
-    if(_useMonitor == false)
-        return;
-    if (_monitorSession == InvalidSessionID())
-    {
-        const auto ip = Ip::Parse(_monitorServerIP);
-        if (!ip.has_value())
-        {
-            return;
-        }
-        auto client = GetClientSession(*ip, _monitorServerPort);
-        if (client.HasError())
-        {
-            return;
-        }
-        _monitorSession = client.Value();
-        SetSessionStaticKey(_monitorSession, 0);
-        SendLogin();
-    }
-    else if (!IsValidSession(_monitorSession))
-    {
-        std::cout << "monitor Connection fail"<<std::endl;
-        _monitorSession = InvalidSessionID();
-        return;
-    }
-
-    int max = 0;
-    int sum = 0;
-    for(auto data: _dummyMonitors)
-    {
-        sum += data.delay;
-        max = std::max(data.maxDelay,max);
-    }
-    auto avg = int(sum/_dummyMonitors.size());
-
-    SendMonitorData(dfMONITOR_DATA_TYPE_GAME_DUMMY_DELAY_AVG,avg );
-    SendMonitorData(dfMONITOR_DATA_TYPE_GAME_DUMMY_DELAY_MAX, max);
 }
 
 void Server::StopForServerDown()
