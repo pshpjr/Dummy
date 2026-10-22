@@ -113,6 +113,8 @@ public:
 
     // 삭제 및 재접속 관련
     int _disconnectWait = 0;
+    //  이 시각이 지나면 스스로 끊는다. 생성할 때 로그정규분포로 정한다.
+    psh::SteadyClock::TimePoint _sessionEnd = psh::SteadyClock::TimePoint::max();
 
     // 서버 정보
     IOCP* _server = nullptr;

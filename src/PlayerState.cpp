@@ -142,16 +142,31 @@ psh::PlayerState* psh::GameStateRefector::Update(Player* player, int time)
         return this;
     }
 
+    //  세션 길이가 다 되면 끊는다. 레벨 이동·채팅은 전투 중에도 매 틱 각자 확률로 일어난다.
+    if (SteadyClock::Now() >= player->_sessionEnd)
+    {
+        player->Disconnect();
+        return DisconnectWaitStateRefector::Get();
+    }
+
+    if (const auto next = NextLevel(player); next != ServerType::End)
+    {
+        player->ReqLevelChange(next);
+        player->_target = -1;
+        return LevelChangeStateRefector::Get();
+    }
+
+    if (NeedActEvery(_interval.chat))
+    {
+        player->Chat();
+    }
+
     //이동중이면 도착 전 까진 이동만 함.
     player->UpdateLocation(time);
-    //플레이어 멈춘 상태. 타겟이 있다면 공격.
-    if (player->_target != -1)
+    //  타겟이 있고 쿨다운이 끝났으면 공격한다. 쿨다운은 Player::Update가 줄인다.
+    //  쿨다운 중에는 타겟이 있어도 이동을 시도한다.
+    if (player->_target != -1 && player->_attackCooldown <= 0)
     {
-        if (player->_attackCooldown > 0)
-        {
-            player->_attackCooldown -= time;
-            return this;
-        }
         auto minSkill = player->_templateID*3;
         if(minSkill<0)
         {
@@ -160,8 +175,7 @@ psh::PlayerState* psh::GameStateRefector::Update(Player* player, int time)
         player->Attack(RandomUtil::Rand(minSkill,minSkill+2));
         player->_attackCooldown += 3000;
     }
-    //멈췄는데 타겟이 없다면 이동 시도
-    else if(NeedAct(_permil.move))
+    else if(NeedActEvery(_interval.move))
     {
         int dx = RandomUtil::Rand(-1* _permil.moveOffset, _permil.moveOffset);
         int dy = RandomUtil::Rand(-1* _permil.moveOffset, _permil.moveOffset);
@@ -179,25 +193,31 @@ psh::PlayerState* psh::GameStateRefector::Update(Player* player, int time)
             player->Move(dest, Player::randomMove);
         }
     }
-   else if(NeedAct(_permil.fieldChange))
-    {
-        auto max = static_cast<int>(ServerType::End)-1;
-        auto target = static_cast<ServerType>(RandomUtil::Rand(0, max));
-        player->ReqLevelChange(target);
-        player->_target = -1;
-        return LevelChangeStateRefector::Get();
-    }
-    else if (NeedAct(_permil.chat))
-    {
-        player->Chat();
-    }
-    else if (NeedAct(_permil.disconnect))
-    {
-        player->Disconnect();
-        return DisconnectWaitStateRefector::Get();
-    }
 
     return this;
+}
+
+psh::ServerType psh::GameStateRefector::RandomField(const ServerType exclude)
+{
+    //  Village(0)를 뺀 필드 중에서 고른다.
+    const auto max = static_cast<int>(ServerType::End) - 1;
+    while (true)
+    {
+        const auto field = static_cast<ServerType>(RandomUtil::Rand(1, max));
+        if (field != exclude)
+            return field;
+    }
+}
+
+psh::ServerType psh::GameStateRefector::NextLevel(const Player* player) const
+{
+    if (NeedActEvery(_interval.toVillage))
+        return ServerType::Village;
+
+    if (NeedActEvery(_interval.fieldChange))
+        return RandomField(player->_containGroup);
+
+    return ServerType::End;
 }
 
 psh::GameStateRefector::GameStateRefector()
@@ -481,17 +501,9 @@ psh::PlayerState* psh::VillageStateRefector::Get()
     return &instance;
 }
 
-psh::PlayerState* psh::VillageStateRefector::Update(Player* player, int time)
+psh::ServerType psh::VillageStateRefector::NextLevel(const Player* player) const
 {
-    if(NeedAct(_permil.fieldChange))
-    {
-        auto max = static_cast<int>(ServerType::End)-1;
-        auto target = static_cast<ServerType>(RandomUtil::Rand(1, max));
-        player->ReqLevelChange(target);
-        player->_target = -1;
-        return LevelChangeStateRefector::Get();
-    }
-    return GameStateRefector::Update(player,time);
+    return NeedActEvery(_interval.toField) ? RandomField(ServerType::Village) : ServerType::End;
 }
 
 psh::VillageStateRefector::VillageStateRefector()

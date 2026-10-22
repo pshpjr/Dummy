@@ -31,13 +31,17 @@ Server::Server() : IOCP()
     dummyParser.GetValue(L"Base.reconnectTime", gData.reconnect);
 
     dummyParser.GetValue(L"permil.loopMs", gPermil.loopMs);
-    dummyParser.GetValue(L"permil.move", gPermil.move);
     dummyParser.GetValue(L"permil.moveRange", gPermil.moveRange);
     dummyParser.GetValue(L"permil.moveOffset", gPermil.moveOffset);
-    dummyParser.GetValue(L"permil.disconnect", gPermil.disconnect);
     dummyParser.GetValue(L"permil.setTarget", gPermil.target);
-    dummyParser.GetValue(L"permil.fieldChange", gPermil.fieldChange);
-    dummyParser.GetValueOrDefault(L"permil.chat", gPermil.chat, L"25");
+
+    dummyParser.GetValue(L"interval.move", gInterval.move);
+    dummyParser.GetValue(L"interval.chat", gInterval.chat);
+    dummyParser.GetValue(L"session.median", gInterval.sessionMedian);
+    dummyParser.GetValue(L"session.mean", gInterval.sessionMean);
+    dummyParser.GetValue(L"interval.fieldChange", gInterval.fieldChange);
+    dummyParser.GetValue(L"interval.toVillage", gInterval.toVillage);
+    dummyParser.GetValue(L"interval.toField", gInterval.toField);
 
 }
 

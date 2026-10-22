@@ -10,15 +10,27 @@ playerPerGroup = 250
 reconnectTime = 3000
 
 [permil]
-# 이동·전투·채팅·필드 이동·재접속을 섞습니다. 실제 PPS는 서버 RecvTPS로 확인합니다.
 loopMs = 100
-move = 400
 moveRange = 6400
 moveOffset = 300
+# 몬스터가 보일 때 타겟으로 잡을 확률(‰). 몬스터가 나타날 때마다 굴립니다.
 setTarget = 1000
-toField = 21
-toVillage = 0
-disconnect = 5
-fieldChange = 21
-chat = 25
 
+[interval]
+# 행동별 평균 간격(초). loopMs마다 loopMs ÷ 간격 확률로 굴리고, 0이면 하지 않습니다.
+# toField·toVillage·fieldChange·chat은 전투 중에도 일어납니다.
+# 아래 값은 부하 시험용으로 매우 잦습니다. 실제 게임에 가깝게 하려면 예를 들어 fieldChange = 300(5분)처럼 늘립니다.
+move = 0.25
+chat = 4
+# 필드 → 다른 필드
+fieldChange = 5
+# 필드 → 마을
+toVillage = 10
+# 마을 → 필드
+toField = 5
+
+[session]
+# 접속 한 번의 길이(초). 접속할 때마다 로그정규분포로 뽑고, 지나면 끊고 reconnectTime 뒤 다시 접속합니다.
+# 기본값은 리니지 II 서버 측정 논문(서울대 MMLAB, NetGames) 값입니다: 중앙값 26분, 평균 183분. median = 0이면 끊지 않습니다.
+median = 1560
+mean = 10980

@@ -2,5 +2,6 @@
 
 
 DummyPercent gPermil;
+DummyInterval gInterval;
 ServerData gData;
 TextFileReader* gChatText = nullptr;

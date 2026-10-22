@@ -16,6 +16,9 @@ static const HashMap<psh::ePacketType,psh::ePacketType> expect =
     {psh::eGame_ReqAttack,psh::ePacketType::eGame_ResAttack}
 };
 
+//  타겟과 이만큼 떨어져 멈춘 뒤 공격한다. 가장 짧은 스킬 사거리(30)보다 짧아야 맞는다.
+static constexpr float ATTACK_DISTANCE = 25;
+
 Player::Player(SessionID id, psh::AccountNo accountNo, IOCP* server, Logger& logger)
     : _accountNo(accountNo),
       _containGroup(psh::ServerType::End),
@@ -24,7 +27,14 @@ Player::Player(SessionID id, psh::AccountNo accountNo, IOCP* server, Logger& log
       _sessionId(id),
       _server(server),
       _state{psh::DisconnectStateRefector::Get()},
-      _logger(logger) {}
+      _logger(logger)
+{
+    if (gInterval.sessionMedian > 0)
+    {
+        const auto seconds = psh::RandomUtil::LogNormal(gInterval.sessionMedian, gInterval.sessionMean);
+        _sessionEnd = psh::SteadyClock::Now() + std::chrono::milliseconds(static_cast<int64_t>(seconds * 1000));
+    }
+}
 
 
 void Player::Update(int milli)
@@ -79,7 +89,7 @@ void Player::SetTarget(psh::ObjectID id, psh::FVector location, int range)
         return;
     }
     //가까운 곳
-    if(dist <=35)
+    if(dist <= ATTACK_DISTANCE)
     {
         if(!(std::isnan(dir.X) || std::isnan(dir.Y)))
         {
@@ -92,7 +102,7 @@ void Player::SetTarget(psh::ObjectID id, psh::FVector location, int range)
 
 
     //멀리 있으면 위치로
-    auto moveDst = location - (dir*35);
+    auto moveDst = location - (dir * ATTACK_DISTANCE);
     Move(moveDst);
 }
 
