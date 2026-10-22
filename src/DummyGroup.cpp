@@ -13,7 +13,7 @@ using namespace std::chrono_literals;
 DummyGroup::DummyGroup(Server::dummyMonitor& monitor)
     :  _ip(gData.ip), _port(gData.port)
     , _maxPlayerCount(gData.playerPerGroup)
-    , _nextMonitor(std::chrono::steady_clock::now() + 1s)
+    , _nextMonitor(psh::SteadyClock::Now() + 1s)
     , _useDB(gData.useDB)
 , _monitor(monitor)
 {
@@ -33,7 +33,7 @@ void DummyGroup::OnCreate()
 
 void DummyGroup::OnUpdate(int milli)
 {
-    const auto now = std::chrono::steady_clock::now();
+    const auto now = psh::SteadyClock::Now();
     // Never let failed connects prevent reclamation of disconnected players/accounts.
     CleanupDisconnected(now);
     if (static_cast<Server*>(_iocp)->ServerDown())
@@ -72,7 +72,7 @@ void DummyGroup::OnUpdate(int milli)
         if (!_disconnectedSessions.contains(id)) player->Update(milli);
     }
 
-    if (std::chrono::steady_clock::now() > _nextMonitor)
+    if (psh::SteadyClock::Now() > _nextMonitor)
     {
         int delaySum = 0;
         unsigned int delayMax = 0;
@@ -128,7 +128,7 @@ void DummyGroup::OnLeave(SessionID id, int wsaErrCode)
     }
     _monitor.pendingDisconnects = _pendingDisconnects.size();
     _monitor.serverStopDisconnects = _serverStopDisconnects;
-    _deleteWait.emplace(std::chrono::steady_clock::now() + std::chrono::milliseconds(gData.reconnect), id);
+    _deleteWait.emplace(psh::SteadyClock::Now() + std::chrono::milliseconds(gData.reconnect), id);
 }
 
 void DummyGroup::OnRecv(SessionID id, RecvBuffer& recvBuffer)
@@ -157,7 +157,7 @@ void DummyGroup::DeleteActor(SessionID id)
     _disconnectedSessions.erase(id);
 }
 
-void DummyGroup::CleanupDisconnected(std::chrono::steady_clock::time_point now)
+void DummyGroup::CleanupDisconnected(psh::SteadyClock::TimePoint now)
 {
     while (!_deleteWait.empty() && _deleteWait.front().first <= now)
     {

@@ -1,5 +1,4 @@
 #pragma once
-#include <chrono>
 #include <unordered_set>
 
 #include "Logger.h"
@@ -8,6 +7,7 @@
 #include "ContentTypes.h"
 #include "DummyData.h"
 #include "Server.h"
+#include "SteadyClock.h"
 class Player;
 
 class DummyGroup : public Group
@@ -29,7 +29,7 @@ private:
         String state;
         int error;
     };
-    void CleanupDisconnected(std::chrono::steady_clock::time_point now);
+    void CleanupDisconnected(psh::SteadyClock::TimePoint now);
     void RegisterPlayer(SessionID id);
     void RecordInvalid(const PendingDisconnect& disconnect);
     void EnterServerDown();
@@ -45,15 +45,15 @@ private:
     SettingParser _dummySettings;
     
     HashMap<SessionID,std::unique_ptr<Player>> _players;
-    std::chrono::steady_clock::time_point _nextMonitor;
+    psh::SteadyClock::TimePoint _nextMonitor;
     bool _useDB;
 
-    std::queue<std::pair<std::chrono::steady_clock::time_point,SessionID>> _deleteWait;
+    std::queue<std::pair<psh::SteadyClock::TimePoint,SessionID>> _deleteWait;
     // Keep the verdict after the old Player is deleted, keyed to its replacement account.
     HashMap<psh::AccountNo, PendingDisconnect> _pendingDisconnects;
     std::unordered_set<SessionID> _disconnectedSessions;
     bool _serverDown = false;
-    std::chrono::steady_clock::time_point _nextConnectAttempt{};
+    psh::SteadyClock::TimePoint _nextConnectAttempt{};
     unsigned long long _invalidDisconnects = 0;
     unsigned long long _serverStopDisconnects = 0;
     Server::dummyMonitor& _monitor;

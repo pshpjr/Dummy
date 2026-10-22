@@ -4,6 +4,7 @@
 #include <PacketGenerated.h>
 
 #include "Session.h"
+#include "SteadyClock.h"
 #include "Types.h"
 #include "FVector.h"
 #include "SingleThreadCircularQ.h"
@@ -56,7 +57,7 @@ public:
 
     void Req(psh::ePacketType type,int opt = -1,int opt2 = -1,int opt3 = -1,int opt4 = -1)
     {
-        auto now = std::chrono::steady_clock::now();
+        auto now = psh::SteadyClock::Now();
         auto result = _packets.Enqueue({type,now,_me,opt,opt2,opt3,opt4});
 
         if(result == false)
@@ -71,7 +72,7 @@ public:
     struct packet
     {
         psh::ePacketType type;
-        std::chrono::steady_clock::time_point request{};
+        psh::SteadyClock::TimePoint request{};
         psh::ObjectID obj = -1;
         int opt = -1;
         int opt2 = -1;
