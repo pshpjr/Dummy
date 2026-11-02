@@ -33,7 +33,6 @@ int main()
 
         server->ClientInit(8, 8, 50,true,true,false);
         server->Start();
-        psh::util::println(u"start");
         server->Wait();
         psh::metrics::Shutdown();
     });

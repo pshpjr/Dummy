@@ -1,7 +1,6 @@
 #include "DummyGroup.h"
 
 #include <algorithm>
-#include <iostream>
 
 #include "IOCP.h"
 #include "Player.h"
@@ -174,13 +173,13 @@ void DummyGroup::EnterServerDown()
     static_cast<Server*>(_iocp)->StopForServerDown();
 }
 
-void DummyGroup::PrintDisconnectSummary(const char* event) const
+void DummyGroup::PrintDisconnectSummary(const char* event)
 {
     _monitor.invalidDisconnects = _invalidDisconnects;
     _monitor.serverStopDisconnects = _serverStopDisconnects;
     _monitor.pendingDisconnects = _pendingDisconnects.size();
-    std::cout << "[DummyGroup] group=" << static_cast<long>(GetGroupID())
-              << " event=" << event << " invalid=" << _invalidDisconnects
-              << " server_stop=" << _serverStopDisconnects
-              << " pending=" << _pendingDisconnects.size() << std::endl;
+    _dummyLogger.Write(L"DummyDisconnect", Logger::LogLevel::System,
+                       L"group : %ld, event : %s, invalid : %llu, server_stop : %llu, pending : %llu",
+                       static_cast<long>(GetGroupID()), event, _invalidDisconnects, _serverStopDisconnects,
+                       _pendingDisconnects.size());
 }

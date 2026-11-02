@@ -33,7 +33,7 @@ private:
     void RegisterPlayer(SessionID id);
     void RecordInvalid(const PendingDisconnect& disconnect);
     void EnterServerDown();
-    void PrintDisconnectSummary(const char* event) const;
+    void PrintDisconnectSummary(const char* event);
 
     std::stack<psh::AccountNo> _accounts;
     psh::AccountNo g_AccountNo = 0;
