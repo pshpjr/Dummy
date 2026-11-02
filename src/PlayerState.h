@@ -32,6 +32,10 @@ namespace psh
         virtual void Enter(PlayerRefector* player) {}
         virtual void Exit(PlayerRefector* player) {}
         virtual bool ValidDisconnect() { return false; }
+        //  dummy.players 메트릭의 state 라벨.
+        virtual const char* Name() const { return "other"; }
+        //  이 상태에서 플레이어가 지금 행동하지 않는 이유. 행동 중이면 Acting.
+        virtual Player::SleepReason Sleep(const Player* player) const { return Player::SleepReason::WaitResponse; }
         void Disconnect(Player* player, Player::DisconnectReason reason);
         StateType GetType() const
         {return _stateType;}
@@ -52,6 +56,7 @@ namespace psh
 
     class DisconnectStateRefector : public PlayerState {
     public:
+        const char* Name() const override { return "connecting"; }
         static PlayerState* Get();
 
         PlayerState* Update(Player* player, int time) override;
@@ -63,6 +68,7 @@ namespace psh
 
     class LoginLoginStateRefector : public PlayerState {
     public:
+        const char* Name() const override { return "login"; }
         static PlayerState* Get();
 
         PlayerState* Update(Player* player, int time) override;
@@ -73,6 +79,7 @@ namespace psh
 
     class GameLoginStateRefector : public PlayerState {
     public:
+        const char* Name() const override { return "game_login"; }
         static PlayerState* Get();
 
         PlayerState* Update(Player* player, int time) override;
@@ -83,6 +90,8 @@ namespace psh
 
     class GameStateRefector : public PlayerState {
     public:
+        const char* Name() const override { return "game"; }
+        Player::SleepReason Sleep(const Player* player) const override;
         PlayerState* Update(Player* player, int time) override;
 
         GameStateRefector();
@@ -97,6 +106,8 @@ namespace psh
 
     class LevelChangeStateRefector : public GameStateRefector {
     public:
+        const char* Name() const override { return "level_change"; }
+        Player::SleepReason Sleep(const Player*) const override { return Player::SleepReason::WaitResponse; }
         static PlayerState* Get();
 
         PlayerState* Update(Player* player, int time) override;
@@ -108,6 +119,7 @@ namespace psh
 
     class VillageStateRefector : public GameStateRefector {
     public:
+        const char* Name() const override { return "village"; }
         static PlayerState* Get();
 
     protected:
@@ -120,6 +132,7 @@ namespace psh
 
     class PveStateRefector : public GameStateRefector {
     public:
+        const char* Name() const override { return "pve"; }
         static PlayerState* Get();
 
         PlayerState* Update(Player* player, int time) override;
@@ -130,6 +143,7 @@ namespace psh
 
     class PvpStateRefector : public GameStateRefector {
     public:
+        const char* Name() const override { return "pvp"; }
         static PlayerState* Get();
 
         PlayerState* Update(Player* player, int time) override;
@@ -140,6 +154,8 @@ namespace psh
 
     class DisconnectWaitStateRefector : public GameStateRefector {
     public:
+        const char* Name() const override { return "disconnect_wait"; }
+        Player::SleepReason Sleep(const Player*) const override { return Player::SleepReason::Disconnecting; }
         static PlayerState* Get();
 
         PlayerState* Update(Player* player, int time) override;

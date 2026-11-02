@@ -197,6 +197,16 @@ psh::PlayerState* psh::GameStateRefector::Update(Player* player, int time)
     return this;
 }
 
+Player::SleepReason psh::GameStateRefector::Sleep(const Player* player) const
+{
+    //  HP를 받은 뒤 0 이하이면 needUpdate와 상관없이 Dead다. 둘 다 Update를 일찍 돌려보내므로 겹칠 때 원인을 가리려고 먼저 본다.
+    if (player->_hpKnown && player->_hp <= 0)
+        return Player::SleepReason::Dead;
+    if (!player->needUpdate)
+        return Player::SleepReason::WaitCreate;
+    return Player::SleepReason::Acting;
+}
+
 psh::ServerType psh::GameStateRefector::RandomField(const ServerType exclude)
 {
     //  Village(0)를 뺀 필드 중에서 고른다.
@@ -264,6 +274,7 @@ psh::GameStateRefector::GameStateRefector()
         if (objectId == player->_me)
         {
             player->_hp = hp;
+            player->_hpKnown = true;
         }
         return this;
     };
@@ -360,6 +371,7 @@ psh::GameStateRefector::GameStateRefector()
         if (victim == player->_me)
         {
             player->_hp = hp;
+            player->_hpKnown = true;
 
             if (player->_hp<= 0)
             {

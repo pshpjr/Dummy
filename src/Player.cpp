@@ -182,6 +182,24 @@ namespace
     }
 }
 
+const char* Player::SleepName(const SleepReason reason)
+{
+    switch (reason)
+    {
+    case SleepReason::Acting: return "acting";
+    case SleepReason::WaitCreate: return "wait_create";
+    case SleepReason::Dead: return "dead";
+    case SleepReason::WaitResponse: return "wait_response";
+    case SleepReason::Disconnecting: return "disconnecting";
+    default: return "unknown";
+    }
+}
+
+Player::SleepReason Player::Sleep() const
+{
+    return _state->Sleep(this);
+}
+
 Player::~Player()
 {
     packet data;

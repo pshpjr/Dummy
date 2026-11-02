@@ -48,6 +48,19 @@ public:
         End
     };
 
+    //  지금 행동하지 않는 이유. dummy.players 메트릭의 reason 라벨이다.
+    enum class SleepReason {
+        Acting,
+        //  레벨 입장 뒤 내 액터 생성(CreateActor) 패킷을 기다린다. 오지 않으면 영원히 멈춘다.
+        WaitCreate,
+        //  HP가 0 이하라 아무것도 하지 않는다. 끊는 것은 Hit·Destroy 패킷 몫이라 그 패킷이 없으면 멈춘다.
+        Dead,
+        //  요청에 대한 응답을 기다린다.
+        WaitResponse,
+        Disconnecting,
+        End
+    };
+
     Player(SessionID id,psh::AccountNo accountNo, IOCP* server, Logger& logger);
     //  응답을 받지 못한 요청을 대기 수에서 뺀다.
     ~Player();
@@ -66,6 +79,8 @@ public:
     void Attack(char type);
     void RecvPacket(RecvBuffer& buffer);
     psh::PlayerState* State() const { return _state; }
+    [[nodiscard]] SleepReason Sleep() const;
+    static const char* SleepName(SleepReason reason);
     void Stop(psh::FVector newLocation);
     void Move(psh::FVector destination, moveReason reason = None);
 
@@ -136,6 +151,8 @@ public:
 
     // 플레이어 상태 및 기타 정보
     int _hp = 0;
+    //  서버가 알려 준 HP를 한 번이라도 받았다. 받기 전의 _hp는 초기값이라 죽은 것으로 보면 안 된다.
+    bool _hpKnown = false;
     bool _isMove = false;
     bool needUpdate = true;
     int _coin = 0;
