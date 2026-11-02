@@ -32,7 +32,7 @@ namespace psh
         virtual void Enter(PlayerRefector* player) {}
         virtual void Exit(PlayerRefector* player) {}
         virtual bool ValidDisconnect() { return false; }
-        void Disconnect(Player* player);
+        void Disconnect(Player* player, Player::DisconnectReason reason);
         StateType GetType() const
         {return _stateType;}
     protected:

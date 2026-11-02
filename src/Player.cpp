@@ -274,9 +274,13 @@ void Player::Chat()
 }
 
 
-void Player::Disconnect()
+void Player::Disconnect(const DisconnectReason reason)
 {
     needUpdate = false;
+    if (_disconnecting)
+        return;
+
+    _disconnecting = true;
     _server->DisconnectSession(_sessionId);
 }
 

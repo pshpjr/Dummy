@@ -21,9 +21,9 @@ psh::PlayerState* psh::PlayerState::RecvPacket(Player* player, RecvBuffer& buffe
     }
 }
 
-void psh::PlayerState::Disconnect(Player* player)
+void psh::PlayerState::Disconnect(Player* player, const Player::DisconnectReason reason)
 {
-    player->Disconnect();
+    player->Disconnect(reason);
 }
 
 psh::PlayerState* psh::DisconnectStateRefector::Get() {
@@ -62,7 +62,7 @@ psh::LoginLoginStateRefector::LoginLoginStateRefector() {
             if(result != psh::eLoginResult::LoginSuccess)
             {
                 player->_logger.Write(L"Dummy Disconnect",Logger::LogLevel::Debug,L"LoginFail LoginResult: %d",static_cast<int>(result));
-                player->Disconnect();
+                player->Disconnect(Player::DisconnectReason::LoginFail);
 
                 return DisconnectWaitStateRefector::Get();
             }
@@ -145,7 +145,7 @@ psh::PlayerState* psh::GameStateRefector::Update(Player* player, int time)
     //  세션 길이가 다 되면 끊는다. 레벨 이동·채팅은 전투 중에도 매 틱 각자 확률로 일어난다.
     if (SteadyClock::Now() >= player->_sessionEnd)
     {
-        player->Disconnect();
+        player->Disconnect(Player::DisconnectReason::SessionEnd);
         return DisconnectWaitStateRefector::Get();
     }
 
@@ -286,7 +286,8 @@ psh::GameStateRefector::GameStateRefector()
             {
                 player->_logger.Write(L"DummyDisconnect",Logger::LogLevel::Error,L"Invalid Destroy HP > 0, AccountNo : %d, hp : %d",player->_accountNo,player->_hp);
             }
-            player->Disconnect();
+            player->Disconnect(player->_hp > 0 ? Player::DisconnectReason::DestroyAlive
+                                               : Player::DisconnectReason::DestroyDead);
 
             return DisconnectWaitStateRefector::Get();
         }
@@ -362,7 +363,7 @@ psh::GameStateRefector::GameStateRefector()
 
             if (player->_hp<= 0)
             {
-                player->Disconnect();
+                player->Disconnect(Player::DisconnectReason::Death);
 
                 return DisconnectWaitStateRefector::Get();
             }

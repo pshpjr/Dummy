@@ -35,6 +35,19 @@ public:
         randomMove
     };
 
+    //  끊는 이유. dummy.disconnects 메트릭의 reason 라벨이다.
+    enum class DisconnectReason {
+        SessionEnd,
+        //  내 HP가 0 이하가 되는 Hit를 받았다.
+        Death,
+        //  HP가 0 이하일 때 내 액터가 지워졌다.
+        DestroyDead,
+        //  HP가 남았는데 내 액터가 지워졌다. 서버와 상태가 어긋난 것이다.
+        DestroyAlive,
+        LoginFail,
+        End
+    };
+
     Player(SessionID id,psh::AccountNo accountNo, IOCP* server, Logger& logger);
     //  응답을 받지 못한 요청을 대기 수에서 뺀다.
     ~Player();
@@ -49,7 +62,7 @@ public:
     void SetTarget(psh::ObjectID id, psh::FVector location, int range);
     void UpdateLocation(int time);
     void Update(int milli);
-    void Disconnect();
+    void Disconnect(DisconnectReason reason);
     void Attack(char type);
     void RecvPacket(RecvBuffer& buffer);
     psh::PlayerState* State() const { return _state; }
@@ -115,6 +128,8 @@ public:
     int _disconnectWait = 0;
     //  이 시각이 지나면 스스로 끊는다. 생성할 때 로그정규분포로 정한다.
     psh::SteadyClock::TimePoint _sessionEnd = psh::SteadyClock::TimePoint::max();
+    //  끊기 시작했다. 사망하면 Hit와 Destroy가 연달아 와서 사유를 한 번만 세려고 둔다.
+    bool _disconnecting = false;
 
     // 서버 정보
     IOCP* _server = nullptr;
