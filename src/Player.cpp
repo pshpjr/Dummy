@@ -6,6 +6,8 @@
 #include "Server.h"
 #include "TextFileReader.h"
 
+#include <Logger.h>
+
 static const HashMap<psh::ePacketType,psh::ePacketType> expect =
 {
     {psh::eLogin_ReqLogin,psh::ePacketType::eLogin_ResLogin},
@@ -182,6 +184,52 @@ namespace
     }
 }
 
+namespace
+{
+    //  이만큼 행동하지 않으면 멈춘 것으로 보고 플레이어 상태를 로그로 남긴다.
+    constexpr psh::int64 STUCK_LOG_MS = 30'000;
+
+    const char* ServerName(const psh::ServerType type)
+    {
+        switch (type)
+        {
+        case psh::ServerType::Village: return "village";
+        case psh::ServerType::Easy: return "easy";
+        case psh::ServerType::Hard: return "hard";
+        case psh::ServerType::Pvp: return "pvp";
+        default: return "none";
+        }
+    }
+
+    const char* PacketName(const psh::ePacketType type)
+    {
+        switch (type)
+        {
+        case psh::eLogin_ReqLogin: return "req_login";
+        case psh::eLogin_ResLogin: return "res_login";
+        case psh::eGame_ReqLogin: return "req_game_login";
+        case psh::eGame_ResLogin: return "res_game_login";
+        case psh::eGame_ReqLevelEnter: return "req_level_enter";
+        case psh::eGame_ResLevelEnter: return "res_level_enter";
+        case psh::eGame_ReqMove: return "req_move";
+        case psh::eGame_ResMove: return "res_move";
+        case psh::eGame_ResMoveStop: return "res_move_stop";
+        case psh::eGame_ReqAttack: return "req_attack";
+        case psh::eGame_ResAttack: return "res_attack";
+        case psh::eGame_ResCreateActor: return "res_create_actor";
+        case psh::eGame_ResDestroyActor: return "res_destroy_actor";
+        case psh::eGame_ResChracterDetail: return "res_character_detail";
+        case psh::eGame_ResPlayerDetail: return "res_player_detail";
+        case psh::eGame_ResGetCoin: return "res_get_coin";
+        case psh::eGame_ResHit: return "res_hit";
+        case psh::eGame_ResChat: return "res_chat";
+        case psh::ePacketType::None: return "none";
+        default: return "other";
+        }
+    }
+
+}
+
 const char* Player::SleepName(const SleepReason reason)
 {
     switch (reason)
@@ -198,6 +246,44 @@ const char* Player::SleepName(const SleepReason reason)
 Player::SleepReason Player::Sleep() const
 {
     return _state->Sleep(this);
+}
+
+void Player::OnRecv(const psh::ePacketType type)
+{
+    _lastRecvType = type;
+    _lastRecv = psh::SteadyClock::Now();
+}
+
+psh::int64 Player::TrackSleep(const psh::SteadyClock::TimePoint now)
+{
+    const auto reason = Sleep();
+    if (reason != _sleepReason)
+    {
+        _sleepReason = reason;
+        _sleepSince = now;
+        _stuckLogged = false;
+    }
+    if (reason == SleepReason::Acting)
+        return 0;
+
+    const auto sleepMs = psh::SteadyClock::ToMs(now - _sleepSince);
+    if (sleepMs >= STUCK_LOG_MS && !_stuckLogged)
+    {
+        _stuckLogged = true;
+
+        packet pending{};
+        const bool hasPending = _packets.Peek(pending);
+        _logger.Write(L"DummyStuck", Logger::LogLevel::Error,
+                      L"AccountNO : %lld, state : %s, reason : %s, sleep : %lld ms, hp : %d, hpKnown : %d, needUpdate : %d, "
+                      L"group : %s, me : %lld, target : %lld, connected : %lld ms, sessionOver : %d, "
+                      L"lastRecv : %s %lld ms ago, pending : %s %lld ms",
+                      _accountNo, _state->Name(), SleepName(reason), sleepMs, _hp, _hpKnown, needUpdate,
+                      ServerName(_containGroup), _me, _target, psh::SteadyClock::ToMs(now - _connectedAt),
+                      now >= _sessionEnd, PacketName(_lastRecvType), psh::SteadyClock::ToMs(now - _lastRecv),
+                      hasPending ? PacketName(pending.type) : "none",
+                      hasPending ? psh::SteadyClock::ToMs(now - pending.request) : 0);
+    }
+    return sleepMs;
 }
 
 Player::~Player()

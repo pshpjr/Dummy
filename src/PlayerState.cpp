@@ -11,6 +11,7 @@ psh::PlayerState* psh::PlayerState::RecvPacket(Player* player, RecvBuffer& buffe
 {
     ePacketType type;
     buffer >> type;
+    player->OnRecv(type);
 
     auto it = _packetHandlers.find(type);
     if (it != _packetHandlers.end()) {

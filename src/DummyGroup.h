@@ -34,6 +34,7 @@ private:
     void RecordInvalid(const PendingDisconnect& disconnect);
     void EnterServerDown();
     void PrintDisconnectSummary(const char* event);
+    void TrackPlayers(psh::SteadyClock::TimePoint now);
 
     std::stack<psh::AccountNo> _accounts;
     psh::AccountNo g_AccountNo = 0;
@@ -53,6 +54,7 @@ private:
     std::unordered_set<SessionID> _disconnectedSessions;
     bool _serverDown = false;
     psh::SteadyClock::TimePoint _nextConnectAttempt{};
+    int _trackingElapsedMs = 0;
     unsigned long long _invalidDisconnects = 0;
     unsigned long long _serverStopDisconnects = 0;
     Server::dummyMonitor& _monitor;

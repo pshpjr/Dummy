@@ -79,8 +79,12 @@ public:
     void Attack(char type);
     void RecvPacket(RecvBuffer& buffer);
     psh::PlayerState* State() const { return _state; }
+    //  서버에서 받은 패킷을 기록한다. 마지막으로 받은 패킷은 멈춘 이유를 찾을 때 쓴다.
+    void OnRecv(psh::ePacketType type);
     [[nodiscard]] SleepReason Sleep() const;
     static const char* SleepName(SleepReason reason);
+    //  그룹이 1초마다 부른다. 행동하지 않은 시간(ms)을 돌려주고, 오래 멈췄으면 상태를 로그로 남긴다. 행동 중이면 0.
+    psh::int64 TrackSleep(psh::SteadyClock::TimePoint now);
     void Stop(psh::FVector newLocation);
     void Move(psh::FVector destination, moveReason reason = None);
 
@@ -143,8 +147,16 @@ public:
     int _disconnectWait = 0;
     //  이 시각이 지나면 스스로 끊는다. 생성할 때 로그정규분포로 정한다.
     psh::SteadyClock::TimePoint _sessionEnd = psh::SteadyClock::TimePoint::max();
+    psh::SteadyClock::TimePoint _connectedAt = psh::SteadyClock::Now();
     //  끊기 시작했다. 사망하면 Hit와 Destroy가 연달아 와서 사유를 한 번만 세려고 둔다.
     bool _disconnecting = false;
+
+    // 멈춤 추적
+    psh::ePacketType _lastRecvType = psh::ePacketType::None;
+    psh::SteadyClock::TimePoint _lastRecv = psh::SteadyClock::Now();
+    SleepReason _sleepReason = SleepReason::Acting;
+    psh::SteadyClock::TimePoint _sleepSince = psh::SteadyClock::Now();
+    bool _stuckLogged = false;
 
     // 서버 정보
     IOCP* _server = nullptr;

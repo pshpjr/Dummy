@@ -34,6 +34,12 @@ void DummyGroup::OnUpdate(int milli)
     const auto now = psh::SteadyClock::Now();
     // Never let failed connects prevent reclamation of disconnected players/accounts.
     CleanupDisconnected(now);
+    _trackingElapsedMs += milli;
+    if (_trackingElapsedMs >= 1000)
+    {
+        _trackingElapsedMs = 0;
+        TrackPlayers(now);
+    }
     if (static_cast<Server*>(_iocp)->ServerDown())
     {
         EnterServerDown();
@@ -182,4 +188,12 @@ void DummyGroup::PrintDisconnectSummary(const char* event)
                        L"group : %ld, event : %s, invalid : %llu, server_stop : %llu, pending : %llu",
                        static_cast<long>(GetGroupID()), event, _invalidDisconnects, _serverStopDisconnects,
                        _pendingDisconnects.size());
+}
+
+void DummyGroup::TrackPlayers(const psh::SteadyClock::TimePoint now)
+{
+    for (auto& [id, player] : _players)
+    {
+        player->TrackSleep(now);
+    }
 }
