@@ -1,8 +1,10 @@
 #pragma once
+#include <string>
 #include <unordered_set>
 
 #include "Logger.h"
 #include "Group.h"
+#include "Metrics.h"
 #include "SettingParser.h"
 #include "ContentTypes.h"
 #include "DummyData.h"
@@ -34,7 +36,20 @@ private:
     void RecordInvalid(const PendingDisconnect& disconnect);
     void EnterServerDown();
     void PrintDisconnectSummary(const char* event);
-    void TrackPlayers(psh::SteadyClock::TimePoint now);
+    //  플레이어를 state·reason으로 세어 게이지에 반영하고, 오래 멈춘 플레이어를 센다.
+    void UpdatePlayerMetrics(psh::SteadyClock::TimePoint now);
+
+    //  state·reason 조합마다 하나. 그룹마다 같은 시리즈에 더하므로 바뀐 만큼만 Add한다.
+    struct PlayerCount
+    {
+        bool sleeping = false;
+        psh::metrics::Gauge players;
+        psh::metrics::Gauge over30s;
+        psh::metrics::Gauge over5m;
+        //  이번 집계 값과 게이지에 반영해 둔 값. 순서는 players, over30s, over5m.
+        psh::int64 counted[3]{};
+        psh::int64 published[3]{};
+    };
 
     std::stack<psh::AccountNo> _accounts;
     psh::AccountNo g_AccountNo = 0;
@@ -54,7 +69,8 @@ private:
     std::unordered_set<SessionID> _disconnectedSessions;
     bool _serverDown = false;
     psh::SteadyClock::TimePoint _nextConnectAttempt{};
-    int _trackingElapsedMs = 0;
+    HashMap<std::string, PlayerCount> _playerCounts;
+    int _metricElapsedMs = 0;
     unsigned long long _invalidDisconnects = 0;
     unsigned long long _serverStopDisconnects = 0;
     Server::dummyMonitor& _monitor;

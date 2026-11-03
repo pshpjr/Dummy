@@ -1,6 +1,7 @@
 #include "DummyGroup.h"
 
 #include <algorithm>
+#include <array>
 
 #include "IOCP.h"
 #include "Player.h"
@@ -8,6 +9,46 @@
 #include <CoreGlobal.h>
 
 using namespace std::chrono_literals;
+
+namespace
+{
+    //  OnLeave에서 연결이 끊긴 경위. dummy.leaves 메트릭의 kind 라벨이다.
+    enum class LeaveKind
+    {
+        //  더미가 스스로 끊었다.
+        Expected,
+        //  예상 밖으로 리셋됐다. 같은 계정이 다시 접속하면 Invalid로 확정한다.
+        Reset,
+        Invalid,
+        ServerStop,
+        End
+    };
+
+    const psh::metrics::Counter& GetLeaveMetric(const LeaveKind kind)
+    {
+        static const auto metrics = []
+        {
+            using psh::metrics::Registry;
+            const char* names[] = {"expected", "reset", "invalid", "server_stop"};
+            std::array<psh::metrics::Counter, static_cast<size_t>(LeaveKind::End)> result;
+            for (size_t i = 0; i < result.size(); ++i)
+            {
+                result[i] = Registry::CreateCounter("dummy.leaves", "sessions that ended, by how they ended",
+                                                    {{"kind", names[i]}});
+            }
+            return result;
+        }();
+        return metrics[static_cast<size_t>(kind)];
+    }
+
+    //  끊긴 세션이 연결되어 있던 시간의 합. rate 비를 취하면 평균 세션 길이다.
+    const psh::metrics::Counter& GetSessionSeconds()
+    {
+        static const auto metric = psh::metrics::Registry::CreateCounter(
+            "dummy.session.seconds", "total connected seconds of ended sessions");
+        return metric;
+    }
+}
 
 DummyGroup::DummyGroup(Server::dummyMonitor& monitor)
     :  _ip(gData.ip), _port(gData.port)
@@ -34,11 +75,11 @@ void DummyGroup::OnUpdate(int milli)
     const auto now = psh::SteadyClock::Now();
     // Never let failed connects prevent reclamation of disconnected players/accounts.
     CleanupDisconnected(now);
-    _trackingElapsedMs += milli;
-    if (_trackingElapsedMs >= 1000)
+    _metricElapsedMs += milli;
+    if (_metricElapsedMs >= 1000)
     {
-        _trackingElapsedMs = 0;
-        TrackPlayers(now);
+        _metricElapsedMs = 0;
+        UpdatePlayerMetrics(now);
     }
     if (static_cast<Server*>(_iocp)->ServerDown())
     {
@@ -89,20 +130,30 @@ void DummyGroup::OnLeave(SessionID id, int wsaErrCode)
     const auto it = _players.find(id);
     if (it == _players.end() || !_disconnectedSessions.insert(id).second) return;
     const auto& player = it->second;
+    auto kind = LeaveKind::Expected;
     if (static_cast<Server*>(_iocp)->ServerDown())
     {
         EnterServerDown();
         ++_serverStopDisconnects;
+        kind = LeaveKind::ServerStop;
     }
     else if (!player->State()->ValidDisconnect())
     {
         const std::string state = typeid(*player->State()).name();
         PendingDisconnect disconnect{player->_accountNo, String(state.begin(), state.end()), wsaErrCode};
         if (NetError::FromNativeCode(wsaErrCode) == NetErrc::ConnectionReset)
+        {
             _pendingDisconnects.insert_or_assign(player->_accountNo, std::move(disconnect));
+            kind = LeaveKind::Reset;
+        }
         else
+        {
             RecordInvalid(disconnect);
+            kind = LeaveKind::Invalid;
+        }
     }
+    GetLeaveMetric(kind).Add();
+    GetSessionSeconds().Add(psh::SteadyClock::ElapsedMs(player->_connectedAt) / 1000);
     _monitor.pendingDisconnects = _pendingDisconnects.size();
     _monitor.serverStopDisconnects = _serverStopDisconnects;
     _deleteWait.emplace(psh::SteadyClock::Now() + std::chrono::milliseconds(gData.reconnect), id);
@@ -190,10 +241,58 @@ void DummyGroup::PrintDisconnectSummary(const char* event)
                        _pendingDisconnects.size());
 }
 
-void DummyGroup::TrackPlayers(const psh::SteadyClock::TimePoint now)
+void DummyGroup::UpdatePlayerMetrics(const psh::SteadyClock::TimePoint now)
 {
+    for (auto& [key, count] : _playerCounts)
+    {
+        std::fill(std::begin(count.counted), std::end(count.counted), 0);
+    }
+
     for (auto& [id, player] : _players)
     {
-        player->TrackSleep(now);
+        const auto sleepMs = player->TrackSleep(now);
+        const auto state = player->State()->Name();
+        const auto reason = Player::SleepName(player->_sleepReason);
+        const auto key = std::string(state) + '/' + reason;
+
+        auto it = _playerCounts.find(key);
+        if (it == _playerCounts.end())
+        {
+            using psh::metrics::Registry;
+            const psh::metrics::Attributes attributes{{"state", state}, {"reason", reason}};
+            PlayerCount count;
+            count.sleeping = player->_sleepReason != Player::SleepReason::Acting;
+            count.players = Registry::CreateGauge("dummy.players", "dummies by state and why they are not acting",
+                                                  attributes);
+            if (count.sleeping)
+            {
+                auto over = [&](const char* label)
+                {
+                    auto withOver = attributes;
+                    withOver.push_back({"over", label});
+                    return Registry::CreateGauge("dummy.players.sleeping", "dummies not acting for longer than 'over'",
+                                                 withOver);
+                };
+                count.over30s = over("30s");
+                count.over5m = over("5m");
+            }
+            it = _playerCounts.emplace(key, std::move(count)).first;
+        }
+
+        auto& count = it->second;
+        ++count.counted[0];
+        if (sleepMs >= 30'000) ++count.counted[1];
+        if (sleepMs >= 300'000) ++count.counted[2];
+    }
+
+    for (auto& [key, count] : _playerCounts)
+    {
+        count.players.Add(count.counted[0] - count.published[0]);
+        if (count.sleeping)
+        {
+            count.over30s.Add(count.counted[1] - count.published[1]);
+            count.over5m.Add(count.counted[2] - count.published[2]);
+        }
+        std::copy(std::begin(count.counted), std::end(count.counted), std::begin(count.published));
     }
 }

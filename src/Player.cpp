@@ -6,6 +6,7 @@
 #include "Server.h"
 #include "TextFileReader.h"
 
+#include <array>
 #include <Logger.h>
 
 static const HashMap<psh::ePacketType,psh::ePacketType> expect =
@@ -228,6 +229,63 @@ namespace
         }
     }
 
+    const psh::metrics::Counter& GetDisconnectMetric(const Player::DisconnectReason reason)
+    {
+        static const auto metrics = []
+        {
+            using psh::metrics::Registry;
+            const char* names[] = {"session_end", "death", "destroy_dead", "destroy_alive", "login_fail"};
+            std::array<psh::metrics::Counter, static_cast<size_t>(Player::DisconnectReason::End)> result;
+            for (size_t i = 0; i < result.size(); ++i)
+            {
+                result[i] = Registry::CreateCounter("dummy.disconnects", "disconnects started by the dummy",
+                                                    {{"reason", names[i]}});
+            }
+            return result;
+        }();
+        return metrics[static_cast<size_t>(reason)];
+    }
+
+    //  서버가 보낸 패킷 종류별 수. 목록에 없는 종류는 other 하나로 합친다.
+    const psh::metrics::Counter& GetRecvMetric(const psh::ePacketType type)
+    {
+        static const auto metrics = []
+        {
+            using psh::metrics::Registry;
+            std::vector<psh::metrics::Counter> result(psh::ePacketType::None);
+            for (size_t i = 0; i < result.size(); ++i)
+            {
+                result[i] = Registry::CreateCounter("dummy.packets.recv", "packets received from the server",
+                                                    {{"type", PacketName(static_cast<psh::ePacketType>(i))}});
+            }
+            return result;
+        }();
+        return metrics[std::min<size_t>(type, metrics.size() - 1)];
+    }
+
+    //  어느 레벨에서 어느 레벨로 옮기려 했는지. from은 처음 입장이라 없을 수 있다.
+    const psh::metrics::Counter& GetLevelChangeMetric(const psh::ServerType from, const psh::ServerType to)
+    {
+        static const auto metrics = []
+        {
+            using psh::metrics::Registry;
+            constexpr int count = static_cast<int>(psh::ServerType::End) + 1;
+            std::array<psh::metrics::Counter, count * count> result;
+            for (int f = 0; f < count; ++f)
+            {
+                for (int t = 0; t < count - 1; ++t)
+                {
+                    result[f * count + t] = Registry::CreateCounter(
+                        "dummy.level.changes", "level change requests",
+                        {{"from", ServerName(static_cast<psh::ServerType>(f))},
+                         {"to", ServerName(static_cast<psh::ServerType>(t))}});
+                }
+            }
+            return result;
+        }();
+        constexpr int count = static_cast<int>(psh::ServerType::End) + 1;
+        return metrics[static_cast<int>(from) * count + static_cast<int>(to)];
+    }
 }
 
 const char* Player::SleepName(const SleepReason reason)
@@ -252,6 +310,7 @@ void Player::OnRecv(const psh::ePacketType type)
 {
     _lastRecvType = type;
     _lastRecv = psh::SteadyClock::Now();
+    GetRecvMetric(type).Add();
 }
 
 psh::int64 Player::TrackSleep(const psh::SteadyClock::TimePoint now)
@@ -352,6 +411,7 @@ void Player::GameLogin()
 void Player::ReqLevelChange(psh::ServerType type)
 {
     needUpdate = false;
+    GetLevelChangeMetric(_containGroup, type).Add();
     auto reqLevelChange = SendBuffer::Alloc();
     psh::MakeGame_ReqLevelEnter(reqLevelChange,_accountNo,type);
     if (type == psh::ServerType::End)
@@ -385,6 +445,7 @@ void Player::Disconnect(const DisconnectReason reason)
         return;
 
     _disconnecting = true;
+    GetDisconnectMetric(reason).Add();
     _server->DisconnectSession(_sessionId);
 }
 
